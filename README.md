@@ -1,6 +1,6 @@
 # README #
 
-This README would normally document whatever steps are necessary to get your application up and running.
+このリポジトリは、奈良先端科学技術大学院大学情報科学研究科数理情報学研究室の
 
 ### What is this repository for? ###
 
