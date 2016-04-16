@@ -1,12 +1,9 @@
 # README #
 
-このリポジトリは、奈良先端科学技術大学院大学情報科学研究科数理情報学研究室の
-
 ### What is this repository for? ###
 
-* Quick summary
+このリポジトリは、奈良先端科学技術大学院大学 情報科学研究科 数理情報学研究室におけるDENSOプロジェクト、車線変更の予測に関する研究についてのリポジトリです。
 * Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
 
 ### How do I get set up? ###
 
