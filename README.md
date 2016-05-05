@@ -1,12 +1,17 @@
-# README #
+# README
 
-### What is this repository for? ###
+## 作者
 
-このリポジトリは、奈良先端科学技術大学院大学 情報科学研究科 数理情報学研究室におけるDENSOプロジェクト、車線変更の予測に関する研究についてのリポジトリです。
+奈良先端科学技術大学院大学  
+情報科学研究科  
+数理情報学研究室  
+浅山和宣
 
-* Version
+### What is this repository for?
 
-### How do I get set up? ###
+このリポジトリは、周辺車両情報を用いた車線変更予測の研究に用いられるリポジトリです。
+数理情報学研究室のDENSOと共同プロジェクトの一つです。
+### How do I get set up?
 
 * Summary of set up
 * Configuration
