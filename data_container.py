@@ -1,16 +1,15 @@
-#!/home/is/kazuki-a/anaconda3/bin/python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import pandas as pd
+from enum import *
+
+from progressbar import ProgressBar as pb
+
+import matplotlib
 import numpy as np
 import os
-import time
-import math
-from enum import *
+import pandas as pd
 from sympy import *
-from sympy.plotting import plot
-from ProgressBar import ProgressBar as pb
-import scipy.optimize as opt
-import matplotlib
+
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
@@ -19,6 +18,7 @@ class DataInput(Enum):
     loadVectorData = 'vector'
     loadOriginalData = 'origin'
     readFromCSVData = 'read'
+
 
 # クラス内クラスとかできるのか。バウンドインナークラス？
 
@@ -51,7 +51,6 @@ class Sub(IntEnum):
 
 
 class NeighborBlock:
-
     # 距離と速度だけは無限大のむきを考慮しなきゃいけないから、引数でなんとか処理を分岐
     def __init__(self, *initArray):
         if len(initArray) != 0:
@@ -107,17 +106,15 @@ class NeighborBlock:
         # return [math.atan(feature) for feature in self.featureList.reshape(27)]
         return [feature for feature in self.featureList.reshape(27)]
 
+
 # メソッドを呼ぶ順番を考えなきゃいけないクラスってどうなん？
 
-class DataContainer:
-
-    DATA_PATH_6000 = '../1_OriginalData/6000/'
-    DATA_PATH_9000 = '../1_OriginalData/9000/'
+class Container:
+    DATA_PATH_6000 = 'data/Original/6000/'
+    DATA_PATH_9000 = 'data/Original/9000/'
 
     WIDTH_OF_CARS = 2
     LENGTH_OF_CARS = 4
-
-
 
     def get_start_of_LC_label(label):
 
@@ -128,13 +125,13 @@ class DataContainer:
 
         rDelList = []
         previous = -2
-        for i,l in enumerate(rLcLabel):
+        for i, l in enumerate(rLcLabel):
             if l == previous + 1:
                 rDelList.append(i)
             previous = l
         lDelList = []
         previous = -2
-        for i,l in enumerate(lLcLabel):
+        for i, l in enumerate(lLcLabel):
             if l == previous + 1:
                 lDelList.append(i)
             previous = l
@@ -199,8 +196,8 @@ class DataContainer:
             if len(tmp) != 0:
                 le.extend(feature[tmp])
 
-        le = np.delete(np.array(le),np.where(np.array(le) == float('inf')))
-        le = np.delete(np.array(le),np.where(np.array(le) == float('-inf')))
+        le = np.delete(np.array(le), np.where(np.array(le) == float('inf')))
+        le = np.delete(np.array(le), np.where(np.array(le) == float('-inf')))
         plt.hist(le)
 
         if not os.path.exists('Graph/'):
@@ -221,8 +218,8 @@ class DataContainer:
             if len(tmp) != 0:
                 le.extend(feature[tmp])
 
-        le = np.delete(np.array(le),np.where(np.array(le) == float('inf')))
-        le = np.delete(np.array(le),np.where(np.array(le) == float('-inf')))
+        le = np.delete(np.array(le), np.where(np.array(le) == float('inf')))
+        le = np.delete(np.array(le), np.where(np.array(le) == float('-inf')))
 
         plt.hist(le)
 
@@ -233,8 +230,81 @@ class DataContainer:
         plt.savefig('Graph/' + nameOfFeature + "_l" + '.pdf')
         plt.clf()
 
-    def show_plot(self, nameOfFeature):
+    def show_dtcp_ttcp(self):
+        timeList, distanceList, labelList = self.get_cars_with_label()
+        
+        # timeList = [0, 1, 2, -100, 100]
+        # distanceList = [100, -100, 0, 3, -3]
+        # labelList = [0, 1, 1, -1, 0]
+        timeList = np.array(list(map(lambda x: x * 1000 / 3600, timeList)))# 多分この変換で行けるはず・・・
+        distanceList = np.array(distanceList)
+        labelList = np.array(labelList)
+        np.save('../tmp/timeList.npy', timeList)
+        np.save('../tmp/distanceList.npy',distanceList)
+        np.save('../tmp/labelList.npy', labelList) #savez?
+        # print(timeList)
+        # print(distanceList)
+        # print(labelList)
+        left = (timeList[np.where(labelList == -1)],
+                distanceList[np.where(labelList == -1)])
+        straight = (timeList[np.where(labelList == 0)],
+                    distanceList[np.where(labelList == 0)])
+        right = (timeList[np.where(labelList == 1)],
+                 distanceList[np.where(labelList == 1)])
+        alpha = 0.05
+        edgecolor = 'none'
 
+        plt.scatter(*straight, color='#B122B2', alpha=alpha,
+                    edgecolor=edgecolor, label="Straight")
+        plt.scatter(*left, color='#FBA848', alpha=alpha,
+                    edgecolor=edgecolor, label="Left_LC")
+        plt.scatter(*right, color='#2FCDB4', alpha=alpha,
+                    edgecolor=edgecolor, label="Right_LC")
+        plt.legend()
+
+        plt.title("Time To CP and Distance To CP")
+        plt.xlim(-20, 20)
+
+        if not os.path.exists('Graph/'):
+            os.makedirs('Graph/')
+        plt.xlabel("TimeToClosestPoint[sec]")
+        plt.ylabel("DistanceToClosestPoint[m]")
+        plt.savefig('Graph/' + 'TTCPandDTCP' + '.pdf')
+        plt.clf()
+
+    def get_cars_with_label(self):
+        timeList = []
+        distanceList = []
+        labelList = []
+        labels = [lc for dataDict in self.dataDicts for lc in dataDict['roa']]
+        sur_rows = [sur_row for sur in [dataDict['sur'] for dataDict in self.dataDicts] for sur_row in sur]
+
+        for label, sur_row in zip(labels, pb.single_generator(sur_rows)):
+            cars = self.get_cars(sur_row)
+            for car in cars:
+                result = self.calc_timeToClosestPoint(car)
+                timeList.append(result[0])
+                distanceList.append(result[1])
+                labelList.append(label)
+
+        return timeList, distanceList, labelList
+
+    def calc_timeToClosestPoint(self, car):
+        x = car[0]
+        y = car[1]
+        vx = car[2]
+        vy = car[3]
+
+        if vx == 0 and vy == 0:
+            return float('inf'), float('inf')
+
+        import math
+        timeToClosestPoint = -(x * vx + y * vy) / (vx ** 2 + vy ** 2)
+        distanceToClosestPoint = abs(x * vy - y * vx) / math.sqrt(vx ** 2 + vy ** 2)
+
+        return timeToClosestPoint, distanceToClosestPoint
+
+    def show_plot(self, nameOfFeature):
         i = self.featureNames.index(nameOfFeature)
 
         flag = True
@@ -265,8 +335,8 @@ class DataContainer:
                     plt.legend()
                     flag = False
 
-                # plt.title("Graph Title")
-                # plt.xlim([tmp_label[0]/10,tmp_label[len(tmp_label) - 1]]/10)
+                    # plt.title("Graph Title")
+                    # plt.xlim([tmp_label[0]/10,tmp_label[len(tmp_label) - 1]]/10)
 
         if not os.path.exists('Graph/'):
             os.makedirs('Graph/')
@@ -286,15 +356,16 @@ class DataContainer:
 
         for i, subject in enumerate(tmpList):
             for task in sorted(os.listdir(os.path.join(DATA_PATH_6000, subject))):
-                self.subjectNames.append(subject+task)
-                drvDF = pd.read_csv(os.path.join(DATA_PATH_6000	, subject, task, subject + task + '-HostV_DrvInfo.csv'),
-                                    encoding='shift-jis', header=0, names=['time', 'brake', 'gas', 'vel', 'steer', 'accX', 'accY', 'accZ', 'NaN'])
+                self.subjectNames.append(subject + task)
+                drvDF = pd.read_csv(os.path.join(DATA_PATH_6000, subject, task, subject + task + '-HostV_DrvInfo.csv'),
+                                    encoding='shift-jis', header=0,
+                                    names=['time', 'brake', 'gas', 'vel', 'steer', 'accX', 'accY', 'accZ', 'NaN'])
                 drvDF = drvDF.drop(['time', 'NaN'], axis=1)
                 # drvDF = drvDF.fillna(method='ffill')#暫定処置。
-                roaDF = pd.read_csv(os.path.join(DATA_PATH_6000	, subject, task, subject +
+                roaDF = pd.read_csv(os.path.join(DATA_PATH_6000, subject, task, subject +
                                                  task + '-HostV_RoadInfo.csv'), encoding='shift-jis', header=0)
                 roaDF = roaDF['LC']
-                surDF = pd.read_csv(os.path.join(DATA_PATH_6000	, subject, task, subject +
+                surDF = pd.read_csv(os.path.join(DATA_PATH_6000, subject, task, subject +
                                                  task + '-SurVehicleInfo.csv'), encoding='shift-jis', header=0)
                 dataDict = {'drv': drvDF.as_matrix(
                 ), 'roa': roaDF.as_matrix(), 'sur': surDF.as_matrix()}
@@ -353,7 +424,6 @@ class DataContainer:
         np.save('data/label.npy', self.label)
 
     def adjust_size(self):
-
         for dataDict in self.dataDicts:
             drv = dataDict['drv']
             roa = dataDict['roa']
@@ -372,8 +442,8 @@ class DataContainer:
                 sur = sur[:diffs[2], :]
 
             # こちらだと、enumerableにして[i]を付けないと更新されない。おそらく新しいオブジェクトになってしまうから？よくわかんね
-            #✕ dataDict = {'drv':drv,'roa':roa,'sur':sur}
-            #◯ self.dataDict[i] = {'drv':drv,'roa':roa,'sur':sur}
+            # ✕ dataDict = {'drv':drv,'roa':roa,'sur':sur}
+            # ◯ self.dataDict[i] = {'drv':drv,'roa':roa,'sur':sur}
             dataDict['drv'] = drv
             dataDict['roa'] = roa
             dataDict['sur'] = sur
@@ -388,8 +458,10 @@ class DataContainer:
         self.oneDimVectors = [dataDict['roa'] for dataDict in self.dataDicts]
 
     def add_drv_to_twoDimVectors(self):
-        self.concat_twoDimVectors([dataDict['drv'] for dataDict in self.dataDicts], ['Brake[N]', 'Gas Pedal[N]', 'Velocity[km/h]',
-                                                                                     'Steering angle[deg]', 'Acceleration_X[G]', 'Acceleration_Y[G]', 'Acceleration_Z[G]'])  # ここの名称の自動化したい
+        self.concat_twoDimVectors([dataDict['drv'] for dataDict in self.dataDicts],
+                                  ['Brake[N]', 'Gas Pedal[N]', 'Velocity[km/h]',
+                                   'Steering angle[deg]', 'Acceleration_X[G]', 'Acceleration_Y[G]',
+                                   'Acceleration_Z[G]'])  # ここの名称の自動化したい
 
     def add_ttc_to_twoDimVectors(self):
         # ttcs = np.load('ttcs.npy')
@@ -438,7 +510,6 @@ class DataContainer:
         np.save('ttcs.npy', ttcs)
 
     def add_ttn_to_twoDimVectors(self):
-
         # ttcs = np.load('ttns.npy')
         # self.concat_twoDimVectors(ttcs,["TTN" + str(i) for i in range(27)])
         # return
@@ -513,11 +584,11 @@ class DataContainer:
         np.save('dinve.npy', distAndVels)
 
     def get_cars(self, sur_row):
-        cars = sur_row.reshape(sur_row.shape[0] / 4, 4)
+        cars = sur_row.reshape(int(sur_row.shape[0] / 4), 4)
 
         cars_i = []
         for i, car in enumerate(cars):
-            if car[0] == car[1] == car[2] == car[3] == 0 :
+            if car[0] == car[1] == car[2] == car[3] == 0:
                 cars_i.append(i)
 
         # もうちょっとやりようはあったと思うが・・・
@@ -591,7 +662,8 @@ class DataContainer:
                 self.twoDimVectors[i] = np.c_[oldTwoDimVector, newTwoDimVector]
 
     def retain_sequence(self, numOfSequences):
-        for i, (oneDimVector, twoDimVector) in enumerate(zip(pb.single_generator(self.oneDimVectors), self.twoDimVectors)):
+        for i, (oneDimVector, twoDimVector) in enumerate(
+                zip(pb.single_generator(self.oneDimVectors), self.twoDimVectors)):
             tdv = twoDimVector
             p = numOfSequences * tdv.shape[1]
             n = tdv.shape[0] - numOfSequences + 1
@@ -664,41 +736,11 @@ class DataContainer:
             d.extend(self.read_9000())
             self.dataDicts = d
         elif dataInput.value == 'origin':
-            self.dataDicts = np.load('data/dataDicts.npy')
+            self.dataDicts = np.load(
+                '../data/dataDicts.npy')  # <-"../"!!!??!?!!!?!?!!!??!!?!?!!!!??!?!!??!!?current dirの動きを見よう。
         elif dataInput.value == 'vector':
             self.oneDimVectors = np.load('data/oneDimVectors.npy')
             self.twoDimVectors = np.load('data/twoDimVectors.npy')
             self.featureNames = list(np.load('data/featureNames.npy'))
         else:
             print("初期化に失敗しました。第一引数には列挙体DataInputの値を入力してください")
-
-
-def main():
-
-    mfv = MakeFeatureVector(DataInput.readFromCSVData)
-    mfv.adjust_size()
-
-    mfv.save_dataDicts()
-    print("すべてのデータのサンプル数が揃っているか否か：" +
-    str(mfv.is_all_same_size()))#テストもきちんと実装したいところ
-
-    # mfv = MakeFeatureVector(DataInput.loadOriginalData)
-    mfv.assign_lc_to_oneDimVectors()
-    mfv.add_drv_to_twoDimVectors()
-    mfv.add_ttc_to_twoDimVectors()
-    mfv.add_ttn_to_twoDimVectors()
-    mfv.add_distAndVel_to_twoDimVectors()
-
-    mfv.save_vectors()
-    # mfv = MakeFeatureVector(DataInput.loadVectorData)
-
-    mfv.retain_sequence(30)
-    mfv.map_all_m1_to_1()
-    mfv.delete_3frames_after()
-    mfv.vectors_to_label_and_feature()
-    mfv.connect_label_and_feature(7)
-    print('labelとfeatureのサイズ確認：' + str(mfv.is_label_and_feature_same_size()))
-    mfv.save_label_and_feature()
-
-if __name__ == '__main__':
-    main()

@@ -1,6 +1,6 @@
 # README
 
-## 作者
+## 責任者
 
 奈良先端科学技術大学院大学  
 情報科学研究科  
@@ -11,9 +11,17 @@
 
 このリポジトリは、周辺車両情報を用いた車線変更予測の研究に用いられるリポジトリです。
 数理情報学研究室のDENSOと共同プロジェクトの一つです。
+
 ### How do I get set up?
 
+
 * Summary of set up
+$ git clone これ  
+$ source activate  
+$ pip install wheelhouse/*  
+$ mv どこかにあるデータ data  
+多分こんな感じで
+
 * Configuration
 * Dependencies
 * Database configuration
