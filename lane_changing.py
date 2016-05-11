@@ -19,10 +19,7 @@ class DataInput(Enum):
     loadOriginalData = 'origin'
     readFromCSVData = 'read'
 
-
 # クラス内クラスとかできるのか。バウンドインナークラス？
-
-# 被験者番号がすぐに分かるように変数なりを用意する。
 
 
 class Dist(IntEnum):
@@ -52,6 +49,7 @@ class Sub(IntEnum):
 
 class NeighborBlock:
     # 距離と速度だけは無限大のむきを考慮しなきゃいけないから、引数でなんとか処理を分岐
+
     def __init__(self, *initArray):
         if len(initArray) != 0:
             initArray = np.array(initArray)
@@ -110,8 +108,9 @@ class NeighborBlock:
 # メソッドを呼ぶ順番を考えなきゃいけないクラスってどうなん？
 
 class Container:
-    DATA_PATH_6000 = 'data/Original/6000/'
-    DATA_PATH_9000 = 'data/Original/9000/'
+    SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
+    DATA_PATH_6000 = os.path.join(SCRIPT_DIR, 'data/Original/6000/')
+    DATA_PATH_9000 = os.path.join(SCRIPT_DIR, 'data/Original/9000/')
 
     WIDTH_OF_CARS = 2
     LENGTH_OF_CARS = 4
@@ -223,28 +222,28 @@ class Container:
 
         plt.hist(le)
 
-        if not os.path.exists('Graph/'):
-            os.makedirs('Graph/')
+        #ファイル名周り未検証
+        if not os.path.exists(os.path.join(self.__class__.SCRIPT_DIR, 'Graph/')):
+            os.makedirs(os.path.join(self.__class__.SCRIPT_DIR, 'Graph/'))
+
         plt.xlabel("Value")
         plt.ylabel(nameOfFeature)
-        plt.savefig('Graph/' + nameOfFeature + "_l" + '.pdf')
+        plt.savefig(os.path.join(self.__class__.SCRIPT_DIR,
+                    "Graph",
+                    nameOfFeature.replace('\\', "{BSlash}") + "_l" + '.pdf')
+        )
         plt.clf()
 
     def show_dtcp_ttcp(self):
         timeList, distanceList, labelList = self.get_cars_with_label()
-        
-        # timeList = [0, 1, 2, -100, 100]
-        # distanceList = [100, -100, 0, 3, -3]
-        # labelList = [0, 1, 1, -1, 0]
+
         timeList = np.array(list(map(lambda x: x * 1000 / 3600, timeList)))# 多分この変換で行けるはず・・・
         distanceList = np.array(distanceList)
         labelList = np.array(labelList)
-        np.save('../tmp/timeList.npy', timeList)
-        np.save('../tmp/distanceList.npy',distanceList)
-        np.save('../tmp/labelList.npy', labelList) #savez?
-        # print(timeList)
-        # print(distanceList)
-        # print(labelList)
+        #ファイル周り未検証
+        np.save(os.path.join(self.__class__.SCRIPT_DIR, "tmp","timeList.npy"), timeList)
+        np.save(os.path.join(self.__class__.SCRIPT_DIR, "tmp","distanceList.npy"),distanceList)
+        np.save(os.path.join(self.__class__.SCRIPT_DIR, "tmp","labelList.npy"), labelList) #savez?
         left = (timeList[np.where(labelList == -1)],
                 distanceList[np.where(labelList == -1)])
         straight = (timeList[np.where(labelList == 0)],
@@ -265,11 +264,11 @@ class Container:
         plt.title("Time To CP and Distance To CP")
         plt.xlim(-20, 20)
 
-        if not os.path.exists('Graph/'):
-            os.makedirs('Graph/')
+        if not os.path.exists(os.path.join(self.__class__.SCRIPT_DIR, "Graph/")):
+            os.makedirs(os.path.join(self.__class__.SCRIPT_DIR, "Graph/"))
         plt.xlabel("TimeToClosestPoint[sec]")
         plt.ylabel("DistanceToClosestPoint[m]")
-        plt.savefig('Graph/' + 'TTCPandDTCP' + '.pdf')
+        plt.savefig(os.path.join(self.__class__.SCRIPT_DIR, "Graph", "TTCP_and_DTCP.pdf"))
         plt.clf()
 
     def get_cars_with_label(self):
@@ -736,8 +735,7 @@ class Container:
             d.extend(self.read_9000())
             self.dataDicts = d
         elif dataInput.value == 'origin':
-            self.dataDicts = np.load(
-                '../data/dataDicts.npy')  # <-"../"!!!??!?!!!?!?!!!??!!?!?!!!!??!?!!??!!?current dirの動きを見よう。
+            self.dataDicts = np.load(os.path.join(self.__class__.SCRIPT_DIR, "data", "dataDicts.npy")
         elif dataInput.value == 'vector':
             self.oneDimVectors = np.load('data/oneDimVectors.npy')
             self.twoDimVectors = np.load('data/twoDimVectors.npy')
