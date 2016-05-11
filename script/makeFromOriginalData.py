@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 import os
 import sys
 
@@ -11,7 +12,7 @@ ctn.adjust_size()
 
 ctn.save_dataDicts()
 print("すべてのデータのサンプル数が揃っているか否か：" +
-      str(ctn.is_all_same_size()))  # テストもきちんと実装したいところ
+      str(ctn.is_all_same_size()))
 
 # mfv = MakeFeatureVector(DataInput.loadOriginalData)
 ctn.assign_lc_to_oneDimVectors()

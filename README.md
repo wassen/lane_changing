@@ -5,7 +5,7 @@
 奈良先端科学技術大学院大学  
 情報科学研究科  
 数理情報学研究室  
-浅山和宣
+浅山和宣  
 
 ### What is this repository for?
 
@@ -18,8 +18,13 @@
 * Summary of set up
 $ git clone これ  
 $ source activate  
+$ pip install -U pip  
+$ pip install virtualenv  
+$ virtualenv .virtualenv  
+$ source activate  
 $ pip install wheelhouse/*  
-$ mv どこかにあるデータ data  
+$ pip install -r requirements
+$ mv どこかにあるデータ data/  
 多分こんな感じで
 
 * Configuration

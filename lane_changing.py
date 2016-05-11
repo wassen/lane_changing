@@ -406,21 +406,21 @@ class Container:
     def save_dataDicts(self):
         if not os.path.exists('data'):
             os.mkdir('data')
-        np.save('data/dataDicts.npy', self.dataDicts)
-        np.save('data/subjectNames.npy', self.subjectNames)
+        np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "dataDicts.npy"), self.dataDicts)
+        np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "subjectNames.npy"), self.subjectNames)
 
     def save_vectors(self):
         if not os.path.exists('data'):
             os.mkdir('data')
-        np.save('data/twoDimVectors.npy', self.twoDimVectors)
-        np.save('data/oneDimVectors.npy', self.oneDimVectors)
-        np.save('data/featureNames.npy', self.featureNames)
+        np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "twoDimVectors.npy"), self.twoDimVectors)
+        np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "oneDimVectors.npy"), self.oneDimVectors)
+        np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "featureNames.npy"), self.featureNames)
 
     def save_label_and_feature(self):
         if not os.path.exists('data'):
             os.mkdir('data')
-        np.save('data/feature.npy', self.feature)
-        np.save('data/label.npy', self.label)
+        np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "feature.npy"), self.feature)
+        np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "label.npy"), self.label)
 
     def adjust_size(self):
         for dataDict in self.dataDicts:
@@ -506,7 +506,7 @@ class Container:
         featureNames = ['TTC_{0} {1}_{2}'.format(axis, Dist(
             i // 3).name, Side(i % 3).name) for axis in ('X', 'Y') for i in range(27)]
         self.concat_twoDimVectors(ttcs, featureNames)
-        np.save('ttcs.npy', ttcs)
+        # np.save('ttcs.npy', ttcs)
 
     def add_ttn_to_twoDimVectors(self):
         # ttcs = np.load('ttns.npy')
@@ -542,7 +542,7 @@ class Container:
             Dist(i // 3).name, Side(i % 3).name) for i in range(27)]
 
         self.concat_twoDimVectors(ttns, featureNames)
-        np.save('ttns.npy', ttns)
+        # np.save('ttns.npy', ttns)
 
     def add_distAndVel_to_twoDimVectors(self):
         distAndVels = []
@@ -580,7 +580,7 @@ class Container:
         featureNames = ['{0} {1} {2}'.format(kind, Dist(
             i // 3).name, Side(i % 3).name) for kind in ['x', 'y', 'vx', 'vy'] for i in range(27)]
         self.concat_twoDimVectors(distAndVels, featureNames)
-        np.save('dinve.npy', distAndVels)
+        # np.save('dinve.npy', distAndVels)
 
     def get_cars(self, sur_row):
         cars = sur_row.reshape(int(sur_row.shape[0] / 4), 4)
@@ -735,10 +735,12 @@ class Container:
             d.extend(self.read_9000())
             self.dataDicts = d
         elif dataInput.value == 'origin':
-            self.dataDicts = np.load(os.path.join(self.__class__.SCRIPT_DIR, "data", "dataDicts.npy")
+            self.dataDicts = np.load(os.path.join(self.__class__.SCRIPT_DIR, "data", "dataDicts.npy"))
         elif dataInput.value == 'vector':
-            self.oneDimVectors = np.load('data/oneDimVectors.npy')
-            self.twoDimVectors = np.load('data/twoDimVectors.npy')
-            self.featureNames = list(np.load('data/featureNames.npy'))
+            np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "dataDicts.npy"), self.dataDicts)
+
+            self.oneDimVectors = np.load(os.path.join(self.__class__.SCRIPT_DIR, "data", "oneDimVectors.npy"))
+            self.twoDimVectors = np.load(os.path.join(self.__class__.SCRIPT_DIR, "data", "twoDimVectors.npy"))
+            self.featureNames = np.load(os.path.join(self.__class__.SCRIPT_DIR, "data", "featureNames.npy"))
         else:
             print("初期化に失敗しました。第一引数には列挙体DataInputの値を入力してください")
