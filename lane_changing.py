@@ -19,6 +19,7 @@ class DataInput(Enum):
     loadOriginalData = 'origin'
     readFromCSVData = 'read'
 
+
 # クラス内クラスとかできるのか。バウンドインナークラス？
 
 
@@ -199,8 +200,7 @@ class Container:
         le = np.delete(np.array(le), np.where(np.array(le) == float('-inf')))
         plt.hist(le)
 
-        if not os.path.exists('Graph/'):
-            os.makedirs('Graph/')
+        os.makedirs('Graph/', exist_ok=True)
         plt.xlabel("Value")
         plt.ylabel(nameOfFeature)
         plt.savefig('Graph/' + nameOfFeature + "_r" + '.pdf')
@@ -222,53 +222,62 @@ class Container:
 
         plt.hist(le)
 
-        #ファイル名周り未検証
-        if not os.path.exists(os.path.join(self.__class__.SCRIPT_DIR, 'Graph/')):
-            os.makedirs(os.path.join(self.__class__.SCRIPT_DIR, 'Graph/'))
+        # ファイル名周り未検証
+        os.makedirs(os.path.join(self.__class__.SCRIPT_DIR, 'Graph/'), exist_ok=True)
 
         plt.xlabel("Value")
         plt.ylabel(nameOfFeature)
         plt.savefig(os.path.join(self.__class__.SCRIPT_DIR,
-                    "Graph",
-                    nameOfFeature.replace('\\', "{BSlash}") + "_l" + '.pdf')
-        )
+                                 "Graph",
+                                 nameOfFeature.replace('\\', "{BSlash}") + "_l" + '.pdf')
+                    )
         plt.clf()
 
-    def show_dtcp_ttcp(self):
-        timeList, distanceList, labelList = self.get_cars_with_label()
+    def show_dtcp_ttcp(self, load=False):
 
-        timeList = np.array(list(map(lambda x: x * 1000 / 3600, timeList)))# 多分この変換で行けるはず・・・
-        distanceList = np.array(distanceList)
-        labelList = np.array(labelList)
-        #ファイル周り未検証
-        np.save(os.path.join(self.__class__.SCRIPT_DIR, "tmp","timeList.npy"), timeList)
-        np.save(os.path.join(self.__class__.SCRIPT_DIR, "tmp","distanceList.npy"),distanceList)
-        np.save(os.path.join(self.__class__.SCRIPT_DIR, "tmp","labelList.npy"), labelList) #savez?
-        left = (timeList[np.where(labelList == -1)],
-                distanceList[np.where(labelList == -1)])
-        straight = (timeList[np.where(labelList == 0)],
-                    distanceList[np.where(labelList == 0)])
-        right = (timeList[np.where(labelList == 1)],
-                 distanceList[np.where(labelList == 1)])
+        if load:
+            element_of_graph = np.load(os.path.join(self.__class__.SCRIPT_DIR, "tmp", "element_of_graph.npz"))
+            time_list = element_of_graph['time_list']
+            distance_list = element_of_graph['distance_list']
+            label_list = element_of_graph['label_list']
+        else:
+            time_list, distance_list, label_list = self.get_cars_with_label()
+            time_list = np.array(list(map(lambda x: x * 1000 / 3600, time_list)))  # km/h*1000/3600 = m/s
+            distance_list = np.array(distance_list)
+            label_list = np.array(label_list)
+
+        os.makedirs(os.path.join(self.__class__.SCRIPT_DIR, "tmp"), exist_ok=True)
+        np.savez(os.path.join(self.__class__.SCRIPT_DIR, "tmp", "element_of_graph.npz"),
+                 time_list=time_list,
+                 distance_list=distance_list,
+                 label_list=label_list,
+                 )
+
+        left = (time_list[np.where(label_list == -1)],
+                distance_list[np.where(label_list == -1)])
+        straight = (time_list[np.where(label_list == 0)],
+                    distance_list[np.where(label_list == 0)])
+        right = (time_list[np.where(label_list == 1)],
+                 distance_list[np.where(label_list == 1)])
         alpha = 0.05
         edgecolor = 'none'
 
         plt.scatter(*straight, color='#B122B2', alpha=alpha,
                     edgecolor=edgecolor, label="Straight")
-        plt.scatter(*left, color='#FBA848', alpha=alpha,
-                    edgecolor=edgecolor, label="Left_LC")
         plt.scatter(*right, color='#2FCDB4', alpha=alpha,
                     edgecolor=edgecolor, label="Right_LC")
-        plt.legend()
+        plt.scatter(*left, color='#FBA848', alpha=alpha,
+                    edgecolor=edgecolor, label="Left_LC")
+
+        # この解決策はどうなんだ
+        plt.legend(scatterpoints=100)
 
         plt.title("Time To CP and Distance To CP")
-        plt.xlim(-20, 20)
-
-        if not os.path.exists(os.path.join(self.__class__.SCRIPT_DIR, "Graph/")):
-            os.makedirs(os.path.join(self.__class__.SCRIPT_DIR, "Graph/"))
+        plt.xlim(-5, 5)
+        os.makedirs(os.path.join(self.__class__.SCRIPT_DIR, "Graph/"), exist_ok=True)
         plt.xlabel("TimeToClosestPoint[sec]")
         plt.ylabel("DistanceToClosestPoint[m]")
-        plt.savefig(os.path.join(self.__class__.SCRIPT_DIR, "Graph", "TTCP_and_DTCP.pdf"))
+        plt.savefig(os.path.join(self.__class__.SCRIPT_DIR, "Graph", "TTCP_and_DTCP.png"))
         plt.clf()
 
     def get_cars_with_label(self):
@@ -337,8 +346,7 @@ class Container:
                     # plt.title("Graph Title")
                     # plt.xlim([tmp_label[0]/10,tmp_label[len(tmp_label) - 1]]/10)
 
-        if not os.path.exists('Graph/'):
-            os.makedirs('Graph/')
+        os.makedirs('Graph/', exist_ok=True)
         plt.xlabel("Time[sec]")
         plt.ylabel(nameOfFeature)
         plt.savefig('Graph/' + nameOfFeature + '.pdf')
@@ -404,21 +412,18 @@ class Container:
         return dataDicts
 
     def save_dataDicts(self):
-        if not os.path.exists('data'):
-            os.mkdir('data')
+        os.mkdir('data', exist_ok=True)
         np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "dataDicts.npy"), self.dataDicts)
         np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "subjectNames.npy"), self.subjectNames)
 
     def save_vectors(self):
-        if not os.path.exists('data'):
-            os.mkdir('data')
+        os.mkdir('data', exist_ok=True)
         np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "twoDimVectors.npy"), self.twoDimVectors)
         np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "oneDimVectors.npy"), self.oneDimVectors)
         np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "featureNames.npy"), self.featureNames)
 
     def save_label_and_feature(self):
-        if not os.path.exists('data'):
-            os.mkdir('data')
+        os.mkdir('data', exist_ok=True)
         np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "feature.npy"), self.feature)
         np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "label.npy"), self.label)
 

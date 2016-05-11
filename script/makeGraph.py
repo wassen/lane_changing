@@ -7,4 +7,4 @@ sys.path.append(path)
 from lane_changing import Container, DataInput
 
 ctn = Container(DataInput.loadOriginalData)
-ctn.show_dtcp_ttcp()
+ctn.show_dtcp_ttcp(load=True)
