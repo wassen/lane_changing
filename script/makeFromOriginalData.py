@@ -20,6 +20,7 @@ ctn.add_drv_to_twoDimVectors()
 ctn.add_ttc_to_twoDimVectors()
 ctn.add_ttn_to_twoDimVectors()
 ctn.add_distAndVel_to_twoDimVectors()
+ctn.add_ttcpanddtcp_to_twoDimVectors()
 
 ctn.save_vectors()
 # mfv = MakeFeatureVector(DataInput.loadVectorData)

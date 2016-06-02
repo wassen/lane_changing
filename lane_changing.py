@@ -3,10 +3,11 @@
 from enum import *
 
 from progressbar import ProgressBar as pb
-
+# untenkoudousuugaicchishiteimasenn
 import matplotlib
 import numpy as np
 import os
+import math
 import pandas as pd
 from sympy import *
 
@@ -261,31 +262,38 @@ class Container:
                  label_list=label_list,
                  )
 
-        left = (x_list[np.where(label_list == -1)],
-                y_list[np.where(label_list == -1)])
+        # left = (x_list[np.where(label_list == -1)],
+        #         y_list[np.where(label_list == -1)])
+        # straight = (x_list[np.where(label_list == 0)],
+        #             y_list[np.where(label_list == 0)])
+        # right = (x_list[np.where(label_list == 1)],
+        #          y_list[np.where(label_list == 1)])
+        left = (x_list[self.__class__.get_start_of_LC_label(label_list)[1]],
+                y_list[self.__class__.get_start_of_LC_label(label_list)[1]])
         straight = (x_list[np.where(label_list == 0)],
                     y_list[np.where(label_list == 0)])
-        right = (x_list[np.where(label_list == 1)],
-                 y_list[np.where(label_list == 1)])
-        alpha = 0.10
+        right = (x_list[self.__class__.get_start_of_LC_label(label_list)[0]],
+                y_list[self.__class__.get_start_of_LC_label(label_list)[0]])
+        alpha = 0.50
         edgecolor = 'none'
 
         plt.scatter(*straight, color='#B122B2', alpha=alpha,
                     edgecolor=edgecolor, label="Straight")
-        plt.scatter(*right, color='#2FCDB4', alpha=alpha,
-                    edgecolor=edgecolor, label="Right_LC")
-        plt.scatter(*left, color='#FBA848', alpha=alpha,
-                    edgecolor=edgecolor, label="Left_LC")
+        # plt.scatter(*right, color='#2FCDB4', alpha=alpha,
+        #             edgecolor=edgecolor, label="Right_LC")
+        # plt.scatter(*left, color='#FBA848', alpha=alpha,
+        #             edgecolor=edgecolor, label="Left_LC")
 
         # この解決策はどうなんだ
         plt.legend(scatterpoints=100)
 
         # plt.title("{0} and {1}".format(feature1.value, feature2.value))
-        plt.xlim(-3, 3)
-        plt.ylim(0, 120)
+        plt.xlim(-50, 50)
+        plt.ylim(-50, 50)
         os.makedirs(os.path.join(self.__class__.SCRIPT_DIR, "Graph/"), exist_ok=True)
-        plt.xlabel("TimeToCollisionY[sec]")
-        plt.ylabel("Distance[m]")
+        #自動化
+        plt.xlabel("TimeToCollisionX[sec]")
+        plt.ylabel("TimeToCollisionY[sec]")
         plt.savefig(os.path.join(self.__class__.SCRIPT_DIR,
                                  "Graph",
                                  "graph_of_{0}_and_{1}.png".format(feature1.value, feature2.value)
@@ -428,7 +436,7 @@ class Container:
         dataDicts = []
 
         print('9000番台読込中')
-        bar = pb(os.listdir(DATA_PATH_9000))
+        bar = pb(sorted(os.listdir(DATA_PATH_9000)))
         for i, item in enumerate(bar.generator(0)):
             for j, data in enumerate(sorted(os.listdir(os.path.join(DATA_PATH_9000, item)))):
                 if i == 0:
@@ -452,18 +460,18 @@ class Container:
         return dataDicts
 
     def save_dataDicts(self):
-        os.mkdir('data', exist_ok=True)
+        os.makedirs('data', exist_ok=True)
         np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "dataDicts.npy"), self.dataDicts)
         np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "subjectNames.npy"), self.subjectNames)
 
     def save_vectors(self):
-        os.mkdir('data', exist_ok=True)
+        os.makedirs('data', exist_ok=True)
         np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "twoDimVectors.npy"), self.twoDimVectors)
         np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "oneDimVectors.npy"), self.oneDimVectors)
         np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "featureNames.npy"), self.featureNames)
 
     def save_label_and_feature(self):
-        os.mkdir('data', exist_ok=True)
+        os.makedirs('data', exist_ok=True)
         np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "feature.npy"), self.feature)
         np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "label.npy"), self.label)
 
@@ -626,6 +634,43 @@ class Container:
             i // 3).name, Side(i % 3).name) for kind in ['x', 'y', 'vx', 'vy'] for i in range(27)]
         self.concat_twoDimVectors(distAndVels, featureNames)
         # np.save('dinve.npy', distAndVels)
+
+    def add_ttcpanddtcp_to_twoDimVectors(self):
+
+        ttcps = []
+        dtcps = []
+        print('ttcp計算中')
+        # おんなじ処理をしてるしクソ
+
+        surs = [dataDict['sur'] for dataDict in self.dataDicts]
+
+        for sur in pb.single_generator(surs):
+            ttcp = []
+            dtcp = []
+
+            for sur_row in sur:
+
+                cars = self.get_cars(sur_row)
+
+                ttcpBlock = NeighborBlock()
+                dtcpBlock = NeighborBlock()
+                for car in cars:
+                    ttcpBlock.add(self.calc_feature_from_car(car, self.Features.TimeToClosestPoint), car[0], car[1])
+                    dtcpBlock.add(self.calc_feature_from_car(car, self.Features.DistanceToClosestPoint), car[0], car[1])
+
+                ttcp_row = ttcpBlock.get_list_atan()
+                dtcp_row = dtcpBlock.get_list()
+
+                ttcp.append(ttcp_row)
+                dtcp.append(dtcp_row)
+            ttcps.append(np.array(ttcp))
+            dtcps.append(np.array(dtcp))
+
+        featureNames = ['{0} {1} {2}'.format(kind, Dist(
+            i // 3).name, Side(i % 3).name) for kind in ['TTCP', 'DTCP'] for i in range(27)]
+        ttcps.append(np.array(dtcps))
+        self.concat_twoDimVectors(ttcps, featureNames)
+        # np.save('ttns.npy', ttns)
 
     def get_cars(self, sur_row):
         cars = sur_row.reshape(int(sur_row.shape[0] / 4), 4)

@@ -8,5 +8,9 @@ from lane_changing import Container, DataInput
 
 ctn = Container(DataInput.loadOriginalData)
 # ctn.show_plot(ctn.Features.TimeToClosestPoint, ctn.Features.DistanceToClosestPoint, load=True)
- ctn.show_plot(ctn.Features.TimeToCollisionX, ctn.Features.Distance, load=True)
-ctn.show_plot(ctn.Features.TimeToCollisionY, ctn.Features.Distance, load=True)
+ #ctn.show_plot(ctn.Features.TimeToCollisionX, ctn.Features.Distance, load=True)
+#ctn.show_plot(ctn.Features.TimeToCollisionY, ctn.Features.Distance, load=True)
+ctn.show_plot(ctn.Features.TimeToCollisionX, ctn.Features.TimeToCollisionY, load=True)
+
+# もっとわかりやすくスクリプト整理を行いたい
+
