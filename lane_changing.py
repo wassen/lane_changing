@@ -233,33 +233,40 @@ class Container:
                     )
         plt.clf()
 
-    def show_dtcp_ttcp(self, load=False):
+    def show_plot(self, feature1, feature2, load=False):
 
         if load:
-            element_of_graph = np.load(os.path.join(self.__class__.SCRIPT_DIR, "tmp", "element_of_graph.npz"))
-            time_list = element_of_graph['time_list']
-            distance_list = element_of_graph['distance_list']
+            element_of_graph = np.load(os.path.join(self.__class__.SCRIPT_DIR, "tmp", "graph_of_{0}_and_{1}.npz".format(feature1.value, feature2.value)))
+            x_list = element_of_graph['x_list']
+            y_list = element_of_graph['y_list']
             label_list = element_of_graph['label_list']
         else:
-            time_list, distance_list, label_list = self.get_cars_with_label()
-            time_list = np.array(list(map(lambda x: x * 1000 / 3600, time_list)))  # km/h*1000/3600 = m/s
-            distance_list = np.array(distance_list)
-            label_list = np.array(label_list)
+            # 見やすくはなったけど、3倍時間がかかるね
+            x_list = self.get_feature_sequence(feature1)
+            y_list = self.get_feature_sequence(feature2)
+            label_list = self.get_label_sequence()
+
+        x_list = np.array(x_list)
+        y_list = np.array(y_list)
+        label_list = np.array(label_list)
 
         os.makedirs(os.path.join(self.__class__.SCRIPT_DIR, "tmp"), exist_ok=True)
-        np.savez(os.path.join(self.__class__.SCRIPT_DIR, "tmp", "element_of_graph.npz"),
-                 time_list=time_list,
-                 distance_list=distance_list,
+        np.savez(os.path.join(self.__class__.SCRIPT_DIR,
+                              "tmp",
+                              "graph_of_{0}_and_{1}.npz".format(feature1.value, feature2.value)
+                              ),
+                 x_list=x_list,
+                 y_list=y_list,
                  label_list=label_list,
                  )
 
-        left = (time_list[np.where(label_list == -1)],
-                distance_list[np.where(label_list == -1)])
-        straight = (time_list[np.where(label_list == 0)],
-                    distance_list[np.where(label_list == 0)])
-        right = (time_list[np.where(label_list == 1)],
-                 distance_list[np.where(label_list == 1)])
-        alpha = 0.05
+        left = (x_list[np.where(label_list == -1)],
+                y_list[np.where(label_list == -1)])
+        straight = (x_list[np.where(label_list == 0)],
+                    y_list[np.where(label_list == 0)])
+        right = (x_list[np.where(label_list == 1)],
+                 y_list[np.where(label_list == 1)])
+        alpha = 0.10
         edgecolor = 'none'
 
         plt.scatter(*straight, color='#B122B2', alpha=alpha,
@@ -272,85 +279,117 @@ class Container:
         # この解決策はどうなんだ
         plt.legend(scatterpoints=100)
 
-        plt.title("Time To CP and Distance To CP")
-        plt.xlim(-5, 5)
+        # plt.title("{0} and {1}".format(feature1.value, feature2.value))
+        plt.xlim(-3, 3)
+        plt.ylim(0, 120)
         os.makedirs(os.path.join(self.__class__.SCRIPT_DIR, "Graph/"), exist_ok=True)
-        plt.xlabel("TimeToClosestPoint[sec]")
-        plt.ylabel("DistanceToClosestPoint[m]")
-        plt.savefig(os.path.join(self.__class__.SCRIPT_DIR, "Graph", "TTCP_and_DTCP.png"))
+        plt.xlabel("TimeToCollisionY[sec]")
+        plt.ylabel("Distance[m]")
+        plt.savefig(os.path.join(self.__class__.SCRIPT_DIR,
+                                 "Graph",
+                                 "graph_of_{0}_and_{1}.png".format(feature1.value, feature2.value)
+                                 )
+                    )
         plt.clf()
 
-    def get_cars_with_label(self):
-        timeList = []
-        distanceList = []
-        labelList = []
+    def get_label_sequence(self):
         labels = [lc for dataDict in self.dataDicts for lc in dataDict['roa']]
         sur_rows = [sur_row for sur in [dataDict['sur'] for dataDict in self.dataDicts] for sur_row in sur]
-
+        label_list = []
         for label, sur_row in zip(labels, pb.single_generator(sur_rows)):
             cars = self.get_cars(sur_row)
+            for _ in cars:
+                label_list.append(label)
+        return label_list
+
+    def get_feature_sequence(self, feature):
+
+        sur_rows = [sur_row for sur in [dataDict['sur'] for dataDict in self.dataDicts] for sur_row in sur]
+        feature_list = []
+        for sur_row in pb.single_generator(sur_rows):
+            cars = self.get_cars(sur_row)
             for car in cars:
-                result = self.calc_timeToClosestPoint(car)
-                timeList.append(result[0])
-                distanceList.append(result[1])
-                labelList.append(label)
+                feature_list.append(self.calc_feature_from_car(car, feature))
+        return feature_list
 
-        return timeList, distanceList, labelList
+    class Features(Enum):
+        TimeToClosestPoint = "ttcp"
+        DistanceToClosestPoint = "dtcp"
+        TimeToCollisionX = "ttcx"
+        TimeToCollisionY = "ttcy"
+        Distance = "dist"
 
-    def calc_timeToClosestPoint(self, car):
+    def calc_feature_from_car(self, car, feature):
         x = car[0]
         y = car[1]
         vx = car[2]
         vy = car[3]
 
-        if vx == 0 and vy == 0:
-            return float('inf'), float('inf')
+        if feature.value == 'ttcp':
+            if vx == 0 and vy == 0:
+                return float('inf')
+            else:
+                return -(x * vx + y * vy) * 1000 / (vx ** 2 + vy ** 2) / 3600  # km/h*1000/3600 = m/s
+        elif feature.value == "dtcp":
+            if vx == 0 and vy == 0:
+                return float('inf')
+            else:
+                import math
+                return abs(x * vy - y * vx) / math.sqrt(vx ** 2 + vy ** 2)
+        elif feature.value == "ttcx":
+            if np.isnan((x - self.WIDTH_OF_CARS * np.sign(x)) * 1000 / vx / 3600):
+                return float('inf')
+            else:
+                return (x - self.WIDTH_OF_CARS * np.sign(x)) * 1000 / vx / 3600
+        elif feature.value == "ttcy":
+            if np.isnan((y - self.LENGTH_OF_CARS * np.sign(y)) * 1000 / vy / 3600):
+                return float('inf')
+            else:
+                return (y - self.LENGTH_OF_CARS * np.sign(y)) * 1000 / vy / 3600
+        elif feature.value == "dist":
+            import math
+            return math.sqrt(x**2 + y**2)
 
-        import math
-        timeToClosestPoint = -(x * vx + y * vy) / (vx ** 2 + vy ** 2)
-        distanceToClosestPoint = abs(x * vy - y * vx) / math.sqrt(vx ** 2 + vy ** 2)
 
-        return timeToClosestPoint, distanceToClosestPoint
-
-    def show_plot(self, nameOfFeature):
-        i = self.featureNames.index(nameOfFeature)
-
-        flag = True
-        for j, (label, someFeature) in enumerate(zip(pb.single_generator(self.oneDimVectors), self.twoDimVectors)):
-            feature = someFeature[:, i]
-            t = np.arange(0, len(label) / 10, 0.1)
-
-            for k, labelIndex in enumerate(self.__class__.get_before_and_after_LC_label(label)):
-                tmp_t = np.arange(0, len(labelIndex) / 10, 0.1)
-                # tmp_t = t[labelIndex]
-                tmp_feature = feature[labelIndex]
-                tmp_label = label[labelIndex]
-
-                right = (tmp_t[np.where(tmp_label == 1)],
-                         tmp_feature[np.where(tmp_label == 1)])
-                straight = (tmp_t[np.where(tmp_label == 0)],
-                            tmp_feature[np.where(tmp_label == 0)])
-                left = (tmp_t[np.where(tmp_label == -1)],
-                        tmp_feature[np.where(tmp_label == -1)])
-
-                plt.scatter(*straight, color='#B122B2', alpha=0.5,
-                            edgecolor='none', label="Straight")
-                plt.scatter(*left, color='#FBA848', alpha=0.5,
-                            edgecolor='none', label="Left_LC")
-                plt.scatter(*right, color='#2FCDB4', alpha=0.5,
-                            edgecolor='none', label="Right_LC")
-                if flag:
-                    plt.legend()
-                    flag = False
-
-                    # plt.title("Graph Title")
-                    # plt.xlim([tmp_label[0]/10,tmp_label[len(tmp_label) - 1]]/10)
-
-        os.makedirs('Graph/', exist_ok=True)
-        plt.xlabel("Time[sec]")
-        plt.ylabel(nameOfFeature)
-        plt.savefig('Graph/' + nameOfFeature + '.pdf')
-        plt.clf()
+    # def show_plot(self, nameOfFeature):
+    #     i = self.featureNames.index(nameOfFeature)
+    #
+    #     flag = True
+    #     for j, (label, someFeature) in enumerate(zip(pb.single_generator(self.oneDimVectors), self.twoDimVectors)):
+    #         feature = someFeature[:, i]
+    #         t = np.arange(0, len(label) / 10, 0.1)
+    #
+    #         for k, labelIndex in enumerate(self.__class__.get_before_and_after_LC_label(label)):
+    #             tmp_t = np.arange(0, len(labelIndex) / 10, 0.1)
+    #             # tmp_t = t[labelIndex]
+    #             tmp_feature = feature[labelIndex]
+    #             tmp_label = label[labelIndex]
+    #
+    #             right = (tmp_t[np.where(tmp_label == 1)],
+    #                      tmp_feature[np.where(tmp_label == 1)])
+    #             straight = (tmp_t[np.where(tmp_label == 0)],
+    #                         tmp_feature[np.where(tmp_label == 0)])
+    #             left = (tmp_t[np.where(tmp_label == -1)],
+    #                     tmp_feature[np.where(tmp_label == -1)])
+    #
+    #             plt.scatter(*straight, color='#B122B2', alpha=0.5,
+    #                         edgecolor='none', label="Straight")
+    #             plt.scatter(*left, color='#FBA848', alpha=0.5,
+    #                         edgecolor='none', label="Left_LC")
+    #             plt.scatter(*right, color='#2FCDB4', alpha=0.5,
+    #                         edgecolor='none', label="Right_LC")
+    #             if flag:
+    #                 plt.legend()
+    #                 flag = False
+    #
+    #                 # plt.title("Graph Title")
+    #                 # plt.xlim([tmp_label[0]/10,tmp_label[len(tmp_label) - 1]]/10)
+    #
+    #     os.makedirs('Graph/', exist_ok=True)
+    #     plt.xlabel("Time[sec]")
+    #     plt.ylabel(nameOfFeature)
+    #     plt.savefig('Graph/' + nameOfFeature + '.pdf')
+    #     plt.clf()
 
     def read_6000(self):
         DATA_PATH_6000 = self.__class__.DATA_PATH_6000
@@ -600,7 +639,7 @@ class Container:
         cars = np.delete(cars, cars_i, 0)
 
         dist_list = [np.linalg.norm([car[0], car[1]]) for car in cars]
-        sort_i = np.argsort(dist_list)[:8]
+        sort_i = np.argsort(dist_list)  # [:8]
 
         return cars[sort_i]
 
