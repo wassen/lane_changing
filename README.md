@@ -24,6 +24,7 @@ $ virtualenv .virtualenv
 $ source activate  
 $ pip install wheelhouse/*  
 $ pip install -r requirements  
+$ mkdir data  
 $ mv どこかにあるデータ data/  
 多分こんな感じで
 

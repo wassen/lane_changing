@@ -102,9 +102,10 @@ class NeighborBlock:
             self.featureList[dist][side] = feature
 
     def get_list(self):
-        # return [math.atan(feature) for feature in self.featureList.reshape(27)]
         return [feature for feature in self.featureList.reshape(27)]
 
+    def get_list_atan(self):
+        return [math.atan(feature) for feature in self.featureList.reshape(27)]
 
 # メソッドを呼ぶ順番を考えなきゃいけないクラスってどうなん？
 
@@ -502,8 +503,8 @@ class Container:
                         ttcYBlock.add(
                             (car[1] - LENGTH_OF_CARS * np.sign(car[1])) / car[3], car[0], car[1])
 
-                ttc_row = ttcXBlock.get_list()
-                ttc_row.extend(ttcYBlock.get_list())
+                ttc_row = ttcXBlock.get_list_atan()
+                ttc_row.extend(ttcYBlock.get_list_atan())
 
                 ttc.append(ttc_row)
             ttcs.append(np.array(ttc))
@@ -538,7 +539,7 @@ class Container:
                 for car in cars:
                     ttnBlock.add(self.calc_ttn(car), car[0], car[1])
 
-                ttn_row = ttnBlock.get_list()
+                ttn_row = ttnBlock.get_list_atan()
 
                 ttn.append(ttn_row)
             ttns.append(np.array(ttn))
@@ -574,10 +575,10 @@ class Container:
                     vxBlock.add(car[Sub.vx], car[0], car[1])
                     vyBlock.add(car[Sub.vy], car[0], car[1])
 
-                distAndVel_row = xBlock.get_list()
-                distAndVel_row.extend(yBlock.get_list())
-                distAndVel_row.extend(vxBlock.get_list())
-                distAndVel_row.extend(vyBlock.get_list())
+                distAndVel_row = xBlock.get_list_atan()
+                distAndVel_row.extend(yBlock.get_list_atan())
+                distAndVel_row.extend(vxBlock.get_list_atan())
+                distAndVel_row.extend(vyBlock.get_list_atan())
 
                 distAndVel.append(distAndVel_row)
             distAndVels.append(np.array(distAndVel))
