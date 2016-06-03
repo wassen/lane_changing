@@ -246,7 +246,7 @@ class Container:
             # 見やすくはなったけど、3倍時間がかかるね
             x_list = self.get_feature_sequence(feature1)
             y_list = self.get_feature_sequence(feature2)
-            label_list = self.get_label_sequence()
+            label_list = self.get_label_start_sequence()
 
         x_list = np.array(x_list)
         y_list = np.array(y_list)
@@ -262,44 +262,63 @@ class Container:
                  label_list=label_list,
                  )
 
-        # left = (x_list[np.where(label_list == -1)],
-        #         y_list[np.where(label_list == -1)])
-        # straight = (x_list[np.where(label_list == 0)],
-        #             y_list[np.where(label_list == 0)])
-        # right = (x_list[np.where(label_list == 1)],
-        #          y_list[np.where(label_list == 1)])
-        left = (x_list[self.__class__.get_start_of_LC_label(label_list)[1]],
-                y_list[self.__class__.get_start_of_LC_label(label_list)[1]])
+        left = (x_list[np.where(label_list == -1)],
+                y_list[np.where(label_list == -1)])
         straight = (x_list[np.where(label_list == 0)],
                     y_list[np.where(label_list == 0)])
-        right = (x_list[self.__class__.get_start_of_LC_label(label_list)[0]],
-                y_list[self.__class__.get_start_of_LC_label(label_list)[0]])
+        right = (x_list[np.where(label_list == 1)],
+                 y_list[np.where(label_list == 1)])
+        # left = (x_list[self.__class__.get_start_of_LC_label(label_list)[1]],
+        #         y_list[self.__class__.get_start_of_LC_label(label_list)[1]])
+        # straight = (x_list[np.where(label_list == 0)],
+        #             y_list[np.where(label_list == 0)])
+        # right = (x_list[self.__class__.get_start_of_LC_label(label_list)[0]],
+        #         y_list[self.__class__.get_start_of_LC_label(label_list)[0]])
         alpha = 0.50
         edgecolor = 'none'
 
-        plt.scatter(*straight, color='#B122B2', alpha=alpha,
-                    edgecolor=edgecolor, label="Straight")
-        # plt.scatter(*right, color='#2FCDB4', alpha=alpha,
-        #             edgecolor=edgecolor, label="Right_LC")
-        # plt.scatter(*left, color='#FBA848', alpha=alpha,
-        #             edgecolor=edgecolor, label="Left_LC")
+        # plt.scatter(*straight, color='#B122B2', alpha=alpha,
+        #             edgecolor=edgecolor, label="Straight")
+        plt.scatter(*right, color='#2FCDB4', alpha=alpha,
+                    edgecolor=edgecolor, label="Right_LC")
+        plt.scatter(*left, color='#FBA848', alpha=alpha,
+                    edgecolor=edgecolor, label="Left_LC")
 
         # この解決策はどうなんだ
         plt.legend(scatterpoints=100)
 
         # plt.title("{0} and {1}".format(feature1.value, feature2.value))
-        plt.xlim(-50, 50)
-        plt.ylim(-50, 50)
+        plt.xlim(-12, 12)
+        plt.ylim(-0, 120)
         os.makedirs(os.path.join(self.__class__.SCRIPT_DIR, "Graph/"), exist_ok=True)
         #自動化
-        plt.xlabel("TimeToCollisionX[sec]")
-        plt.ylabel("TimeToCollisionY[sec]")
+        # plt.xlabel("TimeToCollisionX[sec]")
+        # plt.ylabel("TimeToCollisionY[sec]")
+        plt.xlabel("TimeToClosestPoint[sec]")
+        plt.ylabel("DistanceToClosestPoint[m]")
         plt.savefig(os.path.join(self.__class__.SCRIPT_DIR,
                                  "Graph",
                                  "graph_of_{0}_and_{1}.png".format(feature1.value, feature2.value)
                                  )
                     )
         plt.clf()
+
+    def get_label_start_sequence(self):
+        labels = [lc for dataDict in self.dataDicts for lc in dataDict['roa']]
+        sur_rows = [sur_row for sur in [dataDict['sur'] for dataDict in self.dataDicts] for sur_row in sur]
+        label_list = []
+        #厳密には、開始と終了が繋がる可能性はあるが、まあないだろう。
+        # labelのなかで、車線変更開始時点のラベル、または直進ならそのままで、それ以外は-2とか
+        b = self.__class__.get_start_of_LC_label(labels)
+        c = list(b[0])
+        c.extend(b[1])
+        labels = [a if a == 0 or i in c else a*2 for i, a in enumerate(labels)]
+        for label, sur_row in zip(labels, pb.single_generator(sur_rows)):
+
+            cars = self.get_cars(sur_row)
+            for _ in cars:
+                label_list.append(label)
+        return label_list
 
     def get_label_sequence(self):
         labels = [lc for dataDict in self.dataDicts for lc in dataDict['roa']]
