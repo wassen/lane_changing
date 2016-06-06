@@ -244,6 +244,7 @@ class Container:
             label_list = element_of_graph['label_list']
         else:
             # 見やすくはなったけど、3倍時間がかかるね
+            # ここを二重配列にして扱い直す。
             x_list = self.get_feature_sequence(feature1)
             y_list = self.get_feature_sequence(feature2)
             label_list = self.get_label_start_sequence()
