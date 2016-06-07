@@ -110,6 +110,27 @@ class NeighborBlock:
 
 # メソッドを呼ぶ順番を考えなきゃいけないクラスってどうなん？
 
+def start_index(label):
+
+    label = np.array(label)
+    labelLists = []
+    rLcLabel = list(np.where(label == 1)[0])
+    lLcLabel = list(np.where(label == -1)[0])
+
+    rDelList = []
+    previous = -2
+    for i, l in enumerate(rLcLabel):
+        if l == previous + 1:
+            rDelList.append(i)
+        previous = l
+    lDelList = []
+    previous = -2
+    for i, l in enumerate(lLcLabel):
+        if l == previous + 1:
+            lDelList.append(i)
+        previous = l
+    return np.delete(rLcLabel, rDelList), np.delete(lLcLabel, lDelList)
+
 class Container:
     SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
     DATA_PATH_6000 = os.path.join(SCRIPT_DIR, 'data/Original/6000/')
@@ -118,26 +139,7 @@ class Container:
     WIDTH_OF_CARS = 2
     LENGTH_OF_CARS = 4
 
-    def get_start_of_LC_label(label):
 
-        label = np.array(label)
-        labelLists = []
-        rLcLabel = list(np.where(label == 1)[0])
-        lLcLabel = list(np.where(label == -1)[0])
-
-        rDelList = []
-        previous = -2
-        for i, l in enumerate(rLcLabel):
-            if l == previous + 1:
-                rDelList.append(i)
-            previous = l
-        lDelList = []
-        previous = -2
-        for i, l in enumerate(lLcLabel):
-            if l == previous + 1:
-                lDelList.append(i)
-            previous = l
-        return np.delete(rLcLabel, rDelList), np.delete(lLcLabel, lDelList)
 
     def get_before_and_after_LC_label(label, before=100, after=100):
 
@@ -194,7 +196,7 @@ class Container:
         le = []
         for j, (label, someFeature) in enumerate(zip(pb.single_generator(self.oneDimVectors), self.twoDimVectors)):
             feature = someFeature[:, i]
-            tmp = self.__class__.get_start_of_LC_label(label)[0]
+            tmp = self.__class__.start_index(label)[0]
             if len(tmp) != 0:
                 le.extend(feature[tmp])
 
@@ -215,7 +217,7 @@ class Container:
         le = []
         for j, (label, someFeature) in enumerate(zip(pb.single_generator(self.oneDimVectors), self.twoDimVectors)):
             feature = someFeature[:, i]
-            tmp = self.__class__.get_start_of_LC_label(label)[1]
+            tmp = self.__class__.start_index(label)[1]
             if len(tmp) != 0:
                 le.extend(feature[tmp])
 
@@ -235,46 +237,56 @@ class Container:
                     )
         plt.clf()
 
+    def concat_all_behavior(self, sequence):
+        return [sequence[name] for name in self.behavior_names]
+
     def show_plot(self, feature1, feature2, load=False):
 
         if load:
             element_of_graph = np.load(os.path.join(self.__class__.SCRIPT_DIR, "tmp", "graph_of_{0}_and_{1}.npz".format(feature1.value, feature2.value)))
-            x_list = element_of_graph['x_list']
-            y_list = element_of_graph['y_list']
-            label_list = element_of_graph['label_list']
+            x_dict = element_of_graph['x_dict']
+            y_dict = element_of_graph['y_dict']
+            label_list = element_of_graph['label_dict']
         else:
-            # 見やすくはなったけど、3倍時間がかかるね
-            # ここを二重配列にして扱い直す。
-            x_list = self.get_feature_sequence(feature1)
-            y_list = self.get_feature_sequence(feature2)
-            label_list = self.get_label_start_sequence()
+            x_dict, y_dict = self.feature_sequence(feature1, feature2)
+            label_dict = self.label_sequence()
+            os.makedirs(os.path.join(self.__class__.SCRIPT_DIR, "tmp"), exist_ok=True)
+            np.savez(os.path.join(self.__class__.SCRIPT_DIR,
+                                  "tmp",
+                                  "graph_of_{0}_and_{1}.npz".format(feature1.value, feature2.value)
+                                  ),
+                     x_dict=x_dict,
+                     y_dict=y_dict,
+                     label_dict=label_dict,
+                     )
 
-        x_list = np.array(x_list)
-        y_list = np.array(y_list)
-        label_list = np.array(label_list)
+        xlist_2dim = self.concat_all_behavior(x_dict)
+        ylist_2dim = self.concat_all_behavior(y_dict)
+        label = self.concat_all_behavior(label_dict)
 
-        os.makedirs(os.path.join(self.__class__.SCRIPT_DIR, "tmp"), exist_ok=True)
-        np.savez(os.path.join(self.__class__.SCRIPT_DIR,
-                              "tmp",
-                              "graph_of_{0}_and_{1}.npz".format(feature1.value, feature2.value)
-                              ),
-                 x_list=x_list,
-                 y_list=y_list,
-                 label_list=label_list,
-                 )
+        b = start_index(label)
+        c = list(b[0])
+        c.extend(b[1])
+        label = [a if a == 0 or i in c else a*2 for i, a in enumerate(label)]
 
-        left = (x_list[np.where(label_list == -1)],
-                y_list[np.where(label_list == -1)])
-        straight = (x_list[np.where(label_list == 0)],
-                    y_list[np.where(label_list == 0)])
-        right = (x_list[np.where(label_list == 1)],
-                 y_list[np.where(label_list == 1)])
-        # left = (x_list[self.__class__.get_start_of_LC_label(label_list)[1]],
-        #         y_list[self.__class__.get_start_of_LC_label(label_list)[1]])
-        # straight = (x_list[np.where(label_list == 0)],
-        #             y_list[np.where(label_list == 0)])
-        # right = (x_list[self.__class__.get_start_of_LC_label(label_list)[0]],
-        #         y_list[self.__class__.get_start_of_LC_label(label_list)[0]])
+        xlist = []
+        ylist = []
+        llist = []
+
+        for xlist_atmoment, ylist_atmoment, label in zip(xlist_2dim, ylist_2dim, label):
+            length_atmoment = len(xlist_atmoment)
+            if length_atmoment != len(ylist_atmoment):
+                print("ひとつ目の特徴とふたつ目の特徴において、特定フレームにおけるサイズの差異が検知されました。なんかおかしいです。")
+            xlist.extend(xlist_atmoment)
+            ylist.extend(ylist_atmoment)
+            llist.extend(list(np.ones(length_atmoment)*label))
+
+        left = (np.array(xlist)[np.where(llist == -1)],
+                np.array(ylist)[np.where(llist == -1)])
+        straight = (np.array(xlist)[np.where(llist == 0)],
+                    np.array(ylist)[np.where(llist == 0)])
+        right = (np.array(xlist)[np.where(llist == 1)],
+                 np.array(ylist)[np.where(llist == 1)])
         alpha = 0.50
         edgecolor = 'none'
 
@@ -305,12 +317,12 @@ class Container:
         plt.clf()
 
     def get_label_start_sequence(self):
-        labels = [lc for dataDict in self.dataDicts for lc in dataDict['roa']]
-        sur_rows = [sur_row for sur in [dataDict['sur'] for dataDict in self.dataDicts] for sur_row in sur]
+        labels = [lc for dataDict in self.data_dicts for lc in dataDict['roa']]
+        sur_rows = [sur_row for sur in [dataDict['sur'] for dataDict in self.data_dicts] for sur_row in sur]
         label_list = []
         #厳密には、開始と終了が繋がる可能性はあるが、まあないだろう。
         # labelのなかで、車線変更開始時点のラベル、または直進ならそのままで、それ以外は-2とか
-        b = self.__class__.get_start_of_LC_label(labels)
+        b = self.__class__.start_index(labels)
         c = list(b[0])
         c.extend(b[1])
         labels = [a if a == 0 or i in c else a*2 for i, a in enumerate(labels)]
@@ -322,8 +334,9 @@ class Container:
         return label_list
 
     def get_label_sequence(self):
-        labels = [lc for dataDict in self.dataDicts for lc in dataDict['roa']]
-        sur_rows = [sur_row for sur in [dataDict['sur'] for dataDict in self.dataDicts] for sur_row in sur]
+
+        labels = [lc for dataDict in self.data_dicts for lc in dataDict['roa']]
+        sur_rows = [sur_row for sur in [dataDict['sur'] for dataDict in self.data_dicts] for sur_row in sur]
         label_list = []
         for label, sur_row in zip(labels, pb.single_generator(sur_rows)):
             cars = self.get_cars(sur_row)
@@ -332,14 +345,50 @@ class Container:
         return label_list
 
     def get_feature_sequence(self, feature):
-
-        sur_rows = [sur_row for sur in [dataDict['sur'] for dataDict in self.dataDicts] for sur_row in sur]
+        sur_rows = [sur_row for sur in [dataDict['sur'] for dataDict in self.data_dicts] for sur_row in sur]
         feature_list = []
         for sur_row in pb.single_generator(sur_rows):
             cars = self.get_cars(sur_row)
             for car in cars:
                 feature_list.append(self.calc_feature_from_car(car, feature))
         return feature_list
+
+    def label_sequence(self):
+        # data_dictsのデータ構造を被験者ごとにしたい感じはある。
+        label_dict = {}
+        for name, data_dict in zip(self.behavior_names, self.data_dicts):
+            label_dict[name] = data_dict['roa']
+        return label_dict
+
+    def feature_sequence(self, *features):
+        """
+        データ構造
+        ある瞬間の周辺車に対する特徴
+        in 各フレームの値
+        in 運転行動の被験者名がkeyの辞書
+        in 特徴数分の配列
+        """
+
+        def feature_list_from_data_dict(feature, data_dict):
+            # ここがおかしいよ
+            for surrounding_data, lanechanging_data in zip(data_dict['sur'], data_dict['roa']):
+                feature_list = []
+                for sur_at_moment, lc_at_moment in zip(surrounding_data, lanechanging_data):
+                    feature_at_moment = []
+                    for car in self.get_cars(sur_at_moment):
+                        feature_at_moment.append(self.calc_feature_from_car(car, feature))
+                feature_list.append(feature_at_moment)
+            return feature_list
+
+        feature_dicts = []
+        for feature in features:
+            feature_dict = {}
+            for data_dict, subjectName in zip(self.data_dicts, self.behavior_names):
+                feature_dict[subjectName] = feature_list_from_data_dict(feature, data_dict)
+            feature_dicts.append(feature_dict)
+        return feature_dicts
+
+
 
     class Features(Enum):
         TimeToClosestPoint = "ttcp"
@@ -431,7 +480,7 @@ class Container:
 
         for i, subject in enumerate(tmpList):
             for task in sorted(os.listdir(os.path.join(DATA_PATH_6000, subject))):
-                self.subjectNames.append(subject + task)
+                self.behavior_names.append(subject + task)
                 drvDF = pd.read_csv(os.path.join(DATA_PATH_6000, subject, task, subject + task + '-HostV_DrvInfo.csv'),
                                     encoding='shift-jis', header=0,
                                     names=['time', 'brake', 'gas', 'vel', 'steer', 'accX', 'accY', 'accZ', 'NaN'])
@@ -460,7 +509,7 @@ class Container:
         for i, item in enumerate(bar.generator(0)):
             for j, data in enumerate(sorted(os.listdir(os.path.join(DATA_PATH_9000, item)))):
                 if i == 0:
-                    self.subjectNames.append(data)
+                    self.behavior_names.append(data)
                     drvDF = pd.read_csv(os.path.join(
                         DATA_PATH_9000, item, data), encoding='shift-jis', header=0)
                     drvDF = drvDF.drop(
@@ -481,8 +530,8 @@ class Container:
 
     def save_dataDicts(self):
         os.makedirs('data', exist_ok=True)
-        np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "dataDicts.npy"), self.dataDicts)
-        np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "subjectNames.npy"), self.subjectNames)
+        np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "dataDicts.npy"), self.data_dicts)
+        np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "subjectNames.npy"), self.behavior_names)
 
     def save_vectors(self):
         os.makedirs('data', exist_ok=True)
@@ -496,7 +545,7 @@ class Container:
         np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "label.npy"), self.label)
 
     def adjust_size(self):
-        for dataDict in self.dataDicts:
+        for dataDict in self.data_dicts:
             drv = dataDict['drv']
             roa = dataDict['roa']
             sur = dataDict['sur']
@@ -521,16 +570,16 @@ class Container:
             dataDict['sur'] = sur
 
     def is_all_same_size(self):
-        for dataDict in self.dataDicts:
+        for dataDict in self.data_dicts:
             if not len(dataDict['drv']) == len(dataDict['roa']) == len(dataDict['sur']):
                 return False
         return True
 
     def assign_lc_to_oneDimVectors(self):
-        self.oneDimVectors = [dataDict['roa'] for dataDict in self.dataDicts]
+        self.oneDimVectors = [dataDict['roa'] for dataDict in self.data_dicts]
 
     def add_drv_to_twoDimVectors(self):
-        self.concat_twoDimVectors([dataDict['drv'] for dataDict in self.dataDicts],
+        self.concat_twoDimVectors([dataDict['drv'] for dataDict in self.data_dicts],
                                   ['Brake[N]', 'Gas Pedal[N]', 'Velocity[km/h]',
                                    'Steering angle[deg]', 'Acceleration_X[G]', 'Acceleration_Y[G]',
                                    'Acceleration_Z[G]'])  # ここの名称の自動化したい
@@ -544,7 +593,7 @@ class Container:
         LENGTH_OF_CARS = self.__class__.LENGTH_OF_CARS
 
         ttcs = []
-        surs = [dataDict['sur'] for dataDict in self.dataDicts]
+        surs = [dataDict['sur'] for dataDict in self.data_dicts]
 
         print('ttc計算中')
         for sur in pb.single_generator(surs):
@@ -593,7 +642,7 @@ class Container:
         print('ttn計算中')
         # おんなじ処理をしてるしクソ
 
-        surs = [dataDict['sur'] for dataDict in self.dataDicts]
+        surs = [dataDict['sur'] for dataDict in self.data_dicts]
 
         for sur in pb.single_generator(surs):
             ttn = []
@@ -621,7 +670,7 @@ class Container:
         distAndVels = []
         print('距離と速度を特徴にしています')
 
-        surs = [dataDict['sur'] for dataDict in self.dataDicts]
+        surs = [dataDict['sur'] for dataDict in self.data_dicts]
         initArrayx = [[float('-inf'), float('inf'), float('inf')]
                       for _ in range(9)]
         initArrayy = [float('inf') for _ in range(15)]
@@ -662,7 +711,7 @@ class Container:
         print('ttcp計算中')
         # おんなじ処理をしてるしクソ
 
-        surs = [dataDict['sur'] for dataDict in self.dataDicts]
+        surs = [dataDict['sur'] for dataDict in self.data_dicts]
 
         for sur in pb.single_generator(surs):
             ttcp = []
@@ -838,16 +887,17 @@ class Container:
         self.twoDimVectors = []
         self.oneDimVectors = None
         self.featureNames = []
-        self.subjectNames = []
+        self.behavior_names = []
         if dataInput.value == 'read':
             d = []
             d.extend(self.read_6000())
             d.extend(self.read_9000())
-            self.dataDicts = d
+            self.data_dicts = d
         elif dataInput.value == 'origin':
-            self.dataDicts = np.load(os.path.join(self.__class__.SCRIPT_DIR, "data", "dataDicts.npy"))
+            self.data_dicts = np.load(os.path.join(self.__class__.SCRIPT_DIR, "data", "dataDicts.npy"))
+            self.behavior_names = np.load(os.path.join(self.__class__.SCRIPT_DIR, "data", "subjectNames.npy"))
         elif dataInput.value == 'vector':
-            np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "dataDicts.npy"), self.dataDicts)
+            np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "dataDicts.npy"), self.data_dicts)
 
             self.oneDimVectors = np.load(os.path.join(self.__class__.SCRIPT_DIR, "data", "oneDimVectors.npy"))
             self.twoDimVectors = np.load(os.path.join(self.__class__.SCRIPT_DIR, "data", "twoDimVectors.npy"))
