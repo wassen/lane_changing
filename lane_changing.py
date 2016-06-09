@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from enum import *
+from unittest import result
 
 from progressbar import ProgressBar as pb
-# untenkoudousuugaicchishiteimasenn
+# 運転行動数が一致しませんって言われてるんだが？
+# プログレスバーの既存モジュールを使うようにする。
+# setting.xmlとかの読み込みをしたいsafeconfigparser
 import matplotlib
 import numpy as np
 import os
@@ -238,27 +241,35 @@ class Container:
         plt.clf()
 
     def concat_all_behavior(self, sequence):
-        return [sequence[name] for name in self.behavior_names]
+        result_list = []
+        for name in self.behavior_names:
+            result_list.extend(sequence[name])
+        return result_list
 
+# 描画範囲も引数指定
     def show_plot(self, feature1, feature2, load=False):
 
+        def savez(item, name):
+            np.savez_compressed(os.path.join(self.__class__.SCRIPT_DIR,
+                                  "tmp",
+                                  "{0}.npz".format(name)
+                                  ),
+                     item=item,
+                     )
+        def loadz(name):
+            return np.load(os.path.join(self.__class__.SCRIPT_DIR, "tmp", "{0}.npz".format(name)))["item"].tolist()
+
         if load:
-            element_of_graph = np.load(os.path.join(self.__class__.SCRIPT_DIR, "tmp", "graph_of_{0}_and_{1}.npz".format(feature1.value, feature2.value)))
-            x_dict = element_of_graph['x_dict']
-            y_dict = element_of_graph['y_dict']
-            label_list = element_of_graph['label_dict']
+            x_dict = loadz(feature1.value)
+            y_dict = loadz(feature2.value)
+            label_dict = loadz("label")
         else:
             x_dict, y_dict = self.feature_sequence(feature1, feature2)
             label_dict = self.label_sequence()
             os.makedirs(os.path.join(self.__class__.SCRIPT_DIR, "tmp"), exist_ok=True)
-            np.savez(os.path.join(self.__class__.SCRIPT_DIR,
-                                  "tmp",
-                                  "graph_of_{0}_and_{1}.npz".format(feature1.value, feature2.value)
-                                  ),
-                     x_dict=x_dict,
-                     y_dict=y_dict,
-                     label_dict=label_dict,
-                     )
+            savez(x_dict, feature1.value)
+            savez(y_dict, feature2.value)
+            savez(label_dict, "label")
 
         xlist_2dim = self.concat_all_behavior(x_dict)
         ylist_2dim = self.concat_all_behavior(y_dict)
@@ -267,20 +278,20 @@ class Container:
         b = start_index(label)
         c = list(b[0])
         c.extend(b[1])
-        label = [a if a == 0 or i in c else a*2 for i, a in enumerate(label)]
+        start_label = [a if a == 0 or i in c else a*2 for i, a in enumerate(label)]
 
         xlist = []
         ylist = []
         llist = []
 
-        for xlist_atmoment, ylist_atmoment, label in zip(xlist_2dim, ylist_2dim, label):
+        for xlist_atmoment, ylist_atmoment, start_label in zip(xlist_2dim, ylist_2dim, start_label):
             length_atmoment = len(xlist_atmoment)
             if length_atmoment != len(ylist_atmoment):
                 print("ひとつ目の特徴とふたつ目の特徴において、特定フレームにおけるサイズの差異が検知されました。なんかおかしいです。")
             xlist.extend(xlist_atmoment)
             ylist.extend(ylist_atmoment)
-            llist.extend(list(np.ones(length_atmoment)*label))
-
+            llist.extend(list(np.ones(length_atmoment)*start_label))
+        llist = np.array(llist)
         left = (np.array(xlist)[np.where(llist == -1)],
                 np.array(ylist)[np.where(llist == -1)])
         straight = (np.array(xlist)[np.where(llist == 0)],
@@ -290,25 +301,33 @@ class Container:
         alpha = 0.50
         edgecolor = 'none'
 
+        def percentile(list1, list2, radius):
+            dist = [np.linalg.norm([l1, l2]) for l1, l2 in zip(list1, list2)]
+            return sum(np.array(dist) < radius)/len(dist)*100
+
+        radius = 3
+
         # plt.scatter(*straight, color='#B122B2', alpha=alpha,
         #             edgecolor=edgecolor, label="Straight")
         plt.scatter(*right, color='#2FCDB4', alpha=alpha,
                     edgecolor=edgecolor, label="Right_LC")
         plt.scatter(*left, color='#FBA848', alpha=alpha,
                     edgecolor=edgecolor, label="Left_LC")
+        plt.Circle((0, 0), radius=radius, alpha=0)
+        print(percentile(right[0], right[1], 3))
+        print(percentile(left[0], left[1], 3))
 
         # この解決策はどうなんだ
         plt.legend(scatterpoints=100)
 
         # plt.title("{0} and {1}".format(feature1.value, feature2.value))
         plt.xlim(-12, 12)
+        #自動化？自分で考えたほうがいいのかも
         plt.ylim(-0, 120)
+        # plt.ylim(-12, 12)
         os.makedirs(os.path.join(self.__class__.SCRIPT_DIR, "Graph/"), exist_ok=True)
-        #自動化
-        # plt.xlabel("TimeToCollisionX[sec]")
-        # plt.ylabel("TimeToCollisionY[sec]")
-        plt.xlabel("TimeToClosestPoint[sec]")
-        plt.ylabel("DistanceToClosestPoint[m]")
+        plt.xlabel("{0}[{1}]".format(feature1.name, "sec" if "Time" in feature1.name else "m"))
+        plt.ylabel("{0}[{1}]".format(feature2.name, "sec" if "Time" in feature1.name else "m"))
         plt.savefig(os.path.join(self.__class__.SCRIPT_DIR,
                                  "Graph",
                                  "graph_of_{0}_and_{1}.png".format(feature1.value, feature2.value)
@@ -370,13 +389,11 @@ class Container:
         """
 
         def feature_list_from_data_dict(feature, data_dict):
-            # ここがおかしいよ
-            for surrounding_data, lanechanging_data in zip(data_dict['sur'], data_dict['roa']):
-                feature_list = []
-                for sur_at_moment, lc_at_moment in zip(surrounding_data, lanechanging_data):
-                    feature_at_moment = []
-                    for car in self.get_cars(sur_at_moment):
-                        feature_at_moment.append(self.calc_feature_from_car(car, feature))
+            feature_list = []
+            for sur_at_moment, lc_at_moment in zip(data_dict['sur'], data_dict['roa']):
+                feature_at_moment = []
+                for car in self.get_cars(sur_at_moment):
+                    feature_at_moment.append(self.calc_feature_from_car(car, feature))
                 feature_list.append(feature_at_moment)
             return feature_list
 
@@ -886,7 +903,7 @@ class Container:
         self.feature = np.array([])
         self.twoDimVectors = []
         self.oneDimVectors = None
-        self.featureNames = []
+        # self.featureNames = []
         self.behavior_names = []
         if dataInput.value == 'read':
             d = []
