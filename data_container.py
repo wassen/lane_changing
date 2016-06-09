@@ -103,7 +103,9 @@ class NeighborBlock:
             self.featureList[dist][side] = feature
 
     def get_list(self):
-        # return [math.atan(feature) for feature in self.featureList.reshape(27)]
+        return [math.atan(feature) for feature in self.featureList.reshape(27)]
+
+    def get_original_list():
         return [feature for feature in self.featureList.reshape(27)]
 
 
