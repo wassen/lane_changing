@@ -1,4 +1,8 @@
 data/
+tmp/
 .idea/
-.virtualenv/
-venv
+.venv/
+__pycache__/
+Graph/
+lane_changing.pyc
+*DS_Store

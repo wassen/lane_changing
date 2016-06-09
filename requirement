@@ -1,5 +1,6 @@
 cycler==0.10.0
 matplotlib==1.5.1
+mpmath==0.19
 numpy==1.11.0
 pandas==0.18.1
 progressbar==0.0.0
@@ -7,3 +8,4 @@ pyparsing==2.1.1
 python-dateutil==2.5.3
 pytz==2016.4
 six==1.10.0
+sympy==1.0
