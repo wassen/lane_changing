@@ -15,6 +15,5 @@ feature2=args[2]
 
 # loadの自動化
 ctn = Container(DataInput.loadOriginalData)
-print(ctn.behavior_names)
 ctn.show_plot(Container.Features(feature1), Container.Features(feature2), load=True)
 
