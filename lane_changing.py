@@ -105,19 +105,17 @@ class NeighborBlock:
             self.distList[dist][side] = np.linalg.norm([x, y])
             self.featureList[dist][side] = feature
 
-    def get_list(self):
-<<<<<<< HEAD:data_container.py
-        return [math.atan(feature) for feature in self.featureList.reshape(27)]
-
     def get_original_list():
-=======
->>>>>>> origin/fsequence:lane_changing.py
         return [feature for feature in self.featureList.reshape(27)]
 
     def get_list_atan(self):
         return [math.atan(feature) for feature in self.featureList.reshape(27)]
 
 # メソッドを呼ぶ順番を考えなきゃいけないクラスってどうなん？
+
+def percentile(list1, list2, radius):
+    dist = [np.linalg.norm([l1, l2]) for l1, l2 in zip(list1, list2)]
+    return sum(np.array(dist) < radius)/len(dist)*100
 
 def start_index(label):
 
@@ -307,33 +305,59 @@ class Container:
         alpha = 0.50
         edgecolor = 'none'
 
-        def percentile(list1, list2, radius):
-            dist = [np.linalg.norm([l1, l2]) for l1, l2 in zip(list1, list2)]
-            return sum(np.array(dist) < radius)/len(dist)*100
 
+        # 暫定
+#        plt.clf()
+#        tmp1 = []
+#        tmp2 = []
+#        tmp1.extend(right[0])
+#        tmp1.extend(left[0])
+#        tmp2.extend(right[1])
+#        tmp2.extend(left[1])
+#        radiuses = np.arange(0, 12, 0.1)
+#        print(tmp1)
+#        print(tmp2)
+#        plt.scatter(radiuses, [percentile(tmp1, tmp2, radius) for radius in radiuses],
+#                    color='#2FCDB4',alpha=alpha, edgecolor=edgecolor)
+#
+#        plt.legend(scatterpoints=10)
+#
+#        os.makedirs(os.path.join(self.__class__.SCRIPT_DIR, "Graph/"), exist_ok=True)
+#        plt.xlabel("Radius")
+#        plt.ylabel("Percentile")
+#        plt.savefig(os.path.join(self.__class__.SCRIPT_DIR,
+#                                 "Graph",
+#                                 "graph_of_{0}_and_{1}.png".format("Radius", "Percentile")
+#                                 )
+#                    )
+#        plt.clf()
+        # 暫定ここまで
+        print(right[0], right[1])
+        print(llist[len(llist) - 450*5:])
         radius = 3
 
-        # plt.scatter(*straight, color='#B122B2', alpha=alpha,
-        #             edgecolor=edgecolor, label="Straight")
+#        plt.scatter(*straight, color='#B122B2', alpha=alpha,
+#                    edgecolor=edgecolor, label="Straight")
         plt.scatter(*right, color='#2FCDB4', alpha=alpha,
                     edgecolor=edgecolor, label="Right_LC")
         plt.scatter(*left, color='#FBA848', alpha=alpha,
                     edgecolor=edgecolor, label="Left_LC")
-        plt.Circle((0, 0), radius=radius, alpha=0)
-        print(percentile(right[0], right[1], 3))
-        print(percentile(left[0], left[1], 3))
+        # plt.Circle((0, 0), radius=radius, alpha=0)
+        # 車の順番がおかしい
+        #print(right[0], right[1])
 
         # この解決策はどうなんだ
         plt.legend(scatterpoints=100)
 
         # plt.title("{0} and {1}".format(feature1.value, feature2.value))
-        plt.xlim(-12, 12)
+        #plt.xlim(-12, 12)
+        plt.xlim(-180, 180)
         #自動化？自分で考えたほうがいいのかも
-        plt.ylim(-0, 120)
-        # plt.ylim(-12, 12)
+        plt.ylim(-0, 100)
+        #plt.ylim(-12, 12)
         os.makedirs(os.path.join(self.__class__.SCRIPT_DIR, "Graph/"), exist_ok=True)
-        plt.xlabel("{0}[{1}]".format(feature1.name, "sec" if "Time" in feature1.name else "m"))
-        plt.ylabel("{0}[{1}]".format(feature2.name, "sec" if "Time" in feature1.name else "m"))
+        plt.xlabel("{0}[{1}]".format(feature1.name, "sec" if "Time" in feature1.name else "deg"))
+        plt.ylabel("{0}[{1}]".format(feature2.name, "sec" if "Time" in feature2.name else "m"))
         plt.savefig(os.path.join(self.__class__.SCRIPT_DIR,
                                  "Graph",
                                  "graph_of_{0}_and_{1}.png".format(feature1.value, feature2.value)
@@ -419,6 +443,7 @@ class Container:
         TimeToCollisionX = "ttcx"
         TimeToCollisionY = "ttcy"
         Distance = "dist"
+        Degree = "deg"
 
     def calc_feature_from_car(self, car, feature):
         x = car[0]
@@ -450,7 +475,9 @@ class Container:
         elif feature.value == "dist":
             import math
             return math.sqrt(x**2 + y**2)
-
+        elif feature.value == "deg":
+            import math
+            return math.atan2(y, x)/math.pi*180
 
     # def show_plot(self, nameOfFeature):
     #     i = self.featureNames.index(nameOfFeature)
@@ -531,6 +558,7 @@ class Container:
         bar = pb(sorted(os.listdir(DATA_PATH_9000)))
         for i, item in enumerate(bar.generator(0)):
             for j, data in enumerate(sorted(os.listdir(os.path.join(DATA_PATH_9000, item)))):
+                print(data)
                 if i == 0:
                     self.behavior_names.append(data)
                     drvDF = pd.read_csv(os.path.join(
