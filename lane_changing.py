@@ -162,8 +162,6 @@ class Container:
     WIDTH_OF_CARS = 2
     LENGTH_OF_CARS = 4
 
-
-
     def get_before_and_after_LC_label(label, before=100, after=100):
 
         label = np.array(label)
