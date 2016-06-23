@@ -307,8 +307,8 @@ class Container:
 
         radius = 3
 
-        # plt.scatter(*straight, color='#B122B2', alpha=alpha,
-        #             edgecolor=edgecolor, label="Straight")
+        plt.scatter(*straight, color='#B122B2', alpha=alpha,
+                    edgecolor=edgecolor, label="Straight")
         plt.scatter(*right, color='#2FCDB4', alpha=alpha,
                     edgecolor=edgecolor, label="Right_LC")
         plt.scatter(*left, color='#FBA848', alpha=alpha,
@@ -322,9 +322,9 @@ class Container:
 
         # plt.title("{0} and {1}".format(feature1.value, feature2.value))
         plt.xlim(-12, 12)
-        #自動化？自分で考えたほうがいいのかも
-        plt.ylim(-0, 120)
-        # plt.ylim(-12, 12)
+        #自動化？自分で考えたほうがいい?
+        # plt.ylim(-0, 120)
+        plt.ylim(-12, 12)
         os.makedirs(os.path.join(self.__class__.SCRIPT_DIR, "Graph/"), exist_ok=True)
         plt.xlabel("{0}[{1}]".format(feature1.name, "sec" if "Time" in feature1.name else "m"))
         plt.ylabel("{0}[{1}]".format(feature2.name, "sec" if "Time" in feature1.name else "m"))
