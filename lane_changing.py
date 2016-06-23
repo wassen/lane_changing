@@ -296,20 +296,35 @@ class Container:
 
         b = start_index(label)
         c = list(b[0])
+        ddd = label[len(label) - 299:]
         c.extend(b[1])
-        start_label = [a if a == 0 or i in c else a*2 for i, a in enumerate(label)]
+        #ここでlabelがバグってそう。それか上のstartindex
+        start_labels = [a if a == 0 or i in c else a*2 for i, a in enumerate(label)]
 
         xlist = []
         ylist = []
         llist = []
 
-        for xlist_atmoment, ylist_atmoment, start_label in zip(xlist_2dim, ylist_2dim, start_label):
-            length_atmoment = len(xlist_atmoment)
-            if length_atmoment != len(ylist_atmoment):
-                print("ひとつ目の特徴とふたつ目の特徴において、特定フレームにおけるサイズの差異が検知されました。なんかおかしいです。")
-            xlist.extend(xlist_atmoment)
-            ylist.extend(ylist_atmoment)
-            llist.extend(list(np.ones(length_atmoment)*start_label))
+# 全車両ver
+#         for xlist_atmoment, ylist_atmoment, start_label in zip(xlist_2dim, ylist_2dim, start_label):
+#             length_atmoment = len(xlist_atmoment)
+#             if length_atmoment != len(ylist_atmoment):
+#                 print("ひとつ目の特徴とふたつ目の特徴において、特定フレームにおけるサイズの差異が検知されました。なんかおかしいです。")
+#             xlist.extend(xlist_atmoment)
+#             ylist.extend(ylist_atmoment)
+#             llist.extend(list(np.ones(length_atmoment)*start_label))
+# 最近傍ver
+        dist_2dim = self.concat_all_behavior(loadz(self.Features.Distance.value))
+        for xlist_atmoment, ylist_atmoment, dist_atmoment, start_label in zip(xlist_2dim, ylist_2dim, dist_2dim, start_labels):
+            if len(xlist_atmoment) == 0:
+                continue
+            min_index = np.argmin(np.array(dist_atmoment))
+            xlist.append(xlist_atmoment[min_index])
+            ylist.append(ylist_atmoment[min_index])
+            llist.append(start_label)
+        print(len(llist))
+        print(len(xlist))
+
         llist = np.array(llist)
         left = (np.array(xlist)[np.where(llist == -1)],
                 np.array(ylist)[np.where(llist == -1)])
@@ -322,37 +337,38 @@ class Container:
 
 
         # 暫定
-#        plt.clf()
-#        tmp1 = []
-#        tmp2 = []
-#        tmp1.extend(right[0])
-#        tmp1.extend(left[0])
-#        tmp2.extend(right[1])
-#        tmp2.extend(left[1])
-#        radiuses = np.arange(0, 12, 0.1)
-#        print(tmp1)
-#        print(tmp2)
-#        plt.scatter(radiuses, [percentile(tmp1, tmp2, radius) for radius in radiuses],
-#                    color='#2FCDB4',alpha=alpha, edgecolor=edgecolor)
-#
-#        plt.legend(scatterpoints=10)
-#
-#        os.makedirs(os.path.join(self.__class__.SCRIPT_DIR, "Graph/"), exist_ok=True)
-#        plt.xlabel("Radius")
-#        plt.ylabel("Percentile")
-#        plt.savefig(os.path.join(self.__class__.SCRIPT_DIR,
-#                                 "Graph",
-#                                 "graph_of_{0}_and_{1}.png".format("Radius", "Percentile")
-#                                 )
-#                    )
-#        plt.clf()
+        plt.clf()
+        tmp1 = []
+        tmp2 = []
+        tmp1.extend(right[0])
+        tmp1.extend(left[0])
+        tmp2.extend(right[1])
+        tmp2.extend(left[1])
+        radiuses = np.arange(0, 12, 0.1)
+        print(tmp1)
+        print(tmp2)
+        plt.scatter(radiuses, [percentile(tmp1, tmp2, radius) for radius in radiuses],
+                   color='#2FCDB4',alpha=alpha, edgecolor=edgecolor)
+
+        plt.legend(scatterpoints=10)
+
+        os.makedirs(os.path.join(self.__class__.SCRIPT_DIR, "Graph/"), exist_ok=True)
+        plt.xlabel("Radius")
+        plt.ylabel("Percentile")
+        plt.savefig(os.path.join(self.__class__.SCRIPT_DIR,
+                                "Graph",
+                                "graph_of_{0}_and_{1}.png".format("Radius", "Percentile")
+                                )
+                   )
+        plt.clf()
         # 暫定ここまで
         print(right[0], right[1])
-        print(llist[len(llist) - 450*5:])
+        # このけっかおかしそう
+        print(llist[len(llist) - 450:])
         radius = 3
 
-#        plt.scatter(*straight, color='#B122B2', alpha=alpha,
-#                    edgecolor=edgecolor, label="Straight")
+        plt.scatter(*straight, color='#B122B2', alpha=alpha,
+                    edgecolor=edgecolor, label="Straight")
         plt.scatter(*right, color='#2FCDB4', alpha=alpha,
                     edgecolor=edgecolor, label="Right_LC")
         plt.scatter(*left, color='#FBA848', alpha=alpha,
@@ -365,11 +381,11 @@ class Container:
         plt.legend(scatterpoints=100)
 
         # plt.title("{0} and {1}".format(feature1.value, feature2.value))
-        #plt.xlim(-12, 12)
+        plt.xlim(-12, 12)
         plt.xlim(-180, 180)
         #自動化？自分で考えたほうがいいのかも
-        plt.ylim(-0, 100)
-        #plt.ylim(-12, 12)
+        plt.ylim(-0, 120)
+        # plt.ylim(-12, 12)
         os.makedirs(os.path.join(self.__class__.SCRIPT_DIR, "Graph/"), exist_ok=True)
         plt.xlabel("{0}[{1}]".format(feature1.name, "sec" if "Time" in feature1.name else "deg"))
         plt.ylabel("{0}[{1}]".format(feature2.name, "sec" if "Time" in feature2.name else "m"))
