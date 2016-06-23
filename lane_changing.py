@@ -52,6 +52,22 @@ class Sub(IntEnum):
     vy = 3
 
 
+class Label(IntEnum):
+    left_lanechanging = -2
+    begin_left_lanechange = -1
+    go_straight = 0
+    begin_right_lanechange = 1
+    right_lanechanging = 2
+    braking_and_go_straight = 3
+
+
+def dividebrakelabel(label, brake, threshold=0.4):
+    '''
+    直進ラベル(0)をブレーキ踏力のしきい値から0と3に分ける
+    '''
+    return [Label.braking_and_go_straight.value if b >= threshold and l == Label.go_straight else l for l,b in zip(label, brake)]
+
+
 class NeighborBlock:
     # 距離と速度だけは無限大のむきを考慮しなきゃいけないから、引数でなんとか処理を分岐
 
@@ -105,13 +121,17 @@ class NeighborBlock:
             self.distList[dist][side] = np.linalg.norm([x, y])
             self.featureList[dist][side] = feature
 
-    def get_list(self):
+    def get_original_list():
         return [feature for feature in self.featureList.reshape(27)]
 
     def get_list_atan(self):
         return [math.atan(feature) for feature in self.featureList.reshape(27)]
 
 # メソッドを呼ぶ順番を考えなきゃいけないクラスってどうなん？
+
+def percentile(list1, list2, radius):
+    dist = [np.linalg.norm([l1, l2]) for l1, l2 in zip(list1, list2)]
+    return sum(np.array(dist) < radius)/len(dist)*100
 
 def start_index(label):
 
@@ -277,20 +297,35 @@ class Container:
 
         b = start_index(label)
         c = list(b[0])
+        ddd = label[len(label) - 299:]
         c.extend(b[1])
-        start_label = [a if a == 0 or i in c else a*2 for i, a in enumerate(label)]
+        #ここでlabelがバグってそう。それか上のstartindex
+        start_labels = [a if a == 0 or i in c else a*2 for i, a in enumerate(label)]
 
         xlist = []
         ylist = []
         llist = []
 
-        for xlist_atmoment, ylist_atmoment, start_label in zip(xlist_2dim, ylist_2dim, start_label):
-            length_atmoment = len(xlist_atmoment)
-            if length_atmoment != len(ylist_atmoment):
-                print("ひとつ目の特徴とふたつ目の特徴において、特定フレームにおけるサイズの差異が検知されました。なんかおかしいです。")
-            xlist.extend(xlist_atmoment)
-            ylist.extend(ylist_atmoment)
-            llist.extend(list(np.ones(length_atmoment)*start_label))
+# 全車両ver
+#         for xlist_atmoment, ylist_atmoment, start_label in zip(xlist_2dim, ylist_2dim, start_label):
+#             length_atmoment = len(xlist_atmoment)
+#             if length_atmoment != len(ylist_atmoment):
+#                 print("ひとつ目の特徴とふたつ目の特徴において、特定フレームにおけるサイズの差異が検知されました。なんかおかしいです。")
+#             xlist.extend(xlist_atmoment)
+#             ylist.extend(ylist_atmoment)
+#             llist.extend(list(np.ones(length_atmoment)*start_label))
+# 最近傍ver
+        dist_2dim = self.concat_all_behavior(loadz(self.Features.Distance.value))
+        for xlist_atmoment, ylist_atmoment, dist_atmoment, start_label in zip(xlist_2dim, ylist_2dim, dist_2dim, start_labels):
+            if len(xlist_atmoment) == 0:
+                continue
+            min_index = np.argmin(np.array(dist_atmoment))
+            xlist.append(xlist_atmoment[min_index])
+            ylist.append(ylist_atmoment[min_index])
+            llist.append(start_label)
+        print(len(llist))
+        print(len(xlist))
+
         llist = np.array(llist)
         left = (np.array(xlist)[np.where(llist == -1)],
                 np.array(ylist)[np.where(llist == -1)])
@@ -301,10 +336,36 @@ class Container:
         alpha = 0.50
         edgecolor = 'none'
 
-        def percentile(list1, list2, radius):
-            dist = [np.linalg.norm([l1, l2]) for l1, l2 in zip(list1, list2)]
-            return sum(np.array(dist) < radius)/len(dist)*100
 
+        # 暫定
+        plt.clf()
+        tmp1 = []
+        tmp2 = []
+        tmp1.extend(right[0])
+        tmp1.extend(left[0])
+        tmp2.extend(right[1])
+        tmp2.extend(left[1])
+        radiuses = np.arange(0, 12, 0.1)
+        print(tmp1)
+        print(tmp2)
+        plt.scatter(radiuses, [percentile(tmp1, tmp2, radius) for radius in radiuses],
+                   color='#2FCDB4',alpha=alpha, edgecolor=edgecolor)
+
+        plt.legend(scatterpoints=10)
+
+        os.makedirs(os.path.join(self.__class__.SCRIPT_DIR, "Graph/"), exist_ok=True)
+        plt.xlabel("Radius")
+        plt.ylabel("Percentile")
+        plt.savefig(os.path.join(self.__class__.SCRIPT_DIR,
+                                "Graph",
+                                "graph_of_{0}_and_{1}.png".format("Radius", "Percentile")
+                                )
+                   )
+        plt.clf()
+        # 暫定ここまで
+        print(right[0], right[1])
+        # このけっかおかしそう
+        print(llist[len(llist) - 450:])
         radius = 3
 
         plt.scatter(*straight, color='#B122B2', alpha=alpha,
@@ -313,21 +374,21 @@ class Container:
                     edgecolor=edgecolor, label="Right_LC")
         plt.scatter(*left, color='#FBA848', alpha=alpha,
                     edgecolor=edgecolor, label="Left_LC")
-        plt.Circle((0, 0), radius=radius, alpha=0)
-        print(percentile(right[0], right[1], 3))
-        print(percentile(left[0], left[1], 3))
+        # plt.Circle((0, 0), radius=radius, alpha=0)
+        # 車の順番がおかしい
+        #print(right[0], right[1])
 
         # この解決策はどうなんだ
         plt.legend(scatterpoints=100)
 
         # plt.title("{0} and {1}".format(feature1.value, feature2.value))
         plt.xlim(-12, 12)
-        #自動化？自分で考えたほうがいい?
-        # plt.ylim(-0, 120)
-        plt.ylim(-12, 12)
+        #自動化？自分で考えたほうがいいのかも
+        plt.ylim(-0, 120)
+        # plt.ylim(-12, 12)
         os.makedirs(os.path.join(self.__class__.SCRIPT_DIR, "Graph/"), exist_ok=True)
-        plt.xlabel("{0}[{1}]".format(feature1.name, "sec" if "Time" in feature1.name else "m"))
-        plt.ylabel("{0}[{1}]".format(feature2.name, "sec" if "Time" in feature1.name else "m"))
+        plt.xlabel("{0}[{1}]".format(feature1.name, "sec" if "Time" in feature1.name else "deg"))
+        plt.ylabel("{0}[{1}]".format(feature2.name, "sec" if "Time" in feature2.name else "m"))
         plt.savefig(os.path.join(self.__class__.SCRIPT_DIR,
                                  "Graph",
                                  "graph_of_{0}_and_{1}.png".format(feature1.value, feature2.value)
@@ -413,6 +474,7 @@ class Container:
         TimeToCollisionX = "ttcx"
         TimeToCollisionY = "ttcy"
         Distance = "dist"
+        Degree = "deg"
 
     def calc_feature_from_car(self, car, feature):
         x = car[0]
@@ -444,7 +506,9 @@ class Container:
         elif feature.value == "dist":
             import math
             return math.sqrt(x**2 + y**2)
-
+        elif feature.value == "deg":
+            import math
+            return math.atan2(y, x)/math.pi*180
 
     # def show_plot(self, nameOfFeature):
     #     i = self.featureNames.index(nameOfFeature)
@@ -525,6 +589,7 @@ class Container:
         bar = pb(sorted(os.listdir(DATA_PATH_9000)))
         for i, item in enumerate(bar.generator(0)):
             for j, data in enumerate(sorted(os.listdir(os.path.join(DATA_PATH_9000, item)))):
+                print(data)
                 if i == 0:
                     self.behavior_names.append(data)
                     drvDF = pd.read_csv(os.path.join(
@@ -903,7 +968,7 @@ class Container:
         self.feature = np.array([])
         self.twoDimVectors = []
         self.oneDimVectors = None
-        # self.featureNames = []
+        self.featureNames = []
         self.behavior_names = []
         if dataInput.value == 'read':
             d = []
