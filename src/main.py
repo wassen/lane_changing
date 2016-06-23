@@ -3,7 +3,7 @@
 from enum import *
 from unittest import result
 
-from progressbar import ProgressBar as pb
+from progre import Progre as pb
 # 運転行動数が一致しませんって言われてるんだが？
 # プログレスバーの既存モジュールを使うようにする。
 # setting.xmlとかの読み込みをしたいsafeconfigparser
@@ -156,8 +156,8 @@ def start_index(label):
 
 class Container:
     REPOSITORY_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../'))
-    DATA_PATH_6000 = os.path.join(REPOSITORY_DIR, '../data/Original/6000/')
-    DATA_PATH_9000 = os.path.join(REPOSITORY_DIR, '../data/Original/9000/')
+    DATA_PATH_6000 = os.path.join(REPOSITORY_DIR, 'data/Original/6000/')
+    DATA_PATH_9000 = os.path.join(REPOSITORY_DIR, 'data/Original/9000/')
 
     WIDTH_OF_CARS = 2
     LENGTH_OF_CARS = 4
@@ -225,7 +225,7 @@ class Container:
         le = np.delete(np.array(le), np.where(np.array(le) == float('-inf')))
         plt.hist(le)
 
-        os.makedirs(os.path.join(self.__class__.REPOSITORY_DIR, 'Graph') exist_ok=True)
+        os.makedirs(os.path.join(self.__class__.REPOSITORY_DIR, 'Graph'), exist_ok=True)
         plt.xlabel("Value")
         plt.ylabel(nameOfFeature)
         plt.savefig(os.path.join(self.__class__.REPOSITORY_DIR, 'Graph',nameOfFeature + "_r" + '.pdf'))
@@ -562,20 +562,19 @@ class Container:
                 self.behavior_names.append(subject + task)
                 drvDF = pd.read_csv(os.path.join(DATA_PATH_6000, subject, task, subject + task + '-HostV_DrvInfo.csv'),
                                     encoding='shift-jis', header=0,
-                                    names=['time', 'brake', 'gas', 'vel', 'steer', 'accX', 'accY', 'accZ', 'NaN'])
+                                    names=['time', 'brake', 'gas', 'vel', 'steer', 'accX', 'accY', 'accZ', 'NaN'], dtype='float16')
                 drvDF = drvDF.drop(['time', 'NaN'], axis=1)
                 # drvDF = drvDF.fillna(method='ffill')#暫定処置。
                 roaDF = pd.read_csv(os.path.join(DATA_PATH_6000, subject, task, subject +
-                                                 task + '-HostV_RoadInfo.csv'), encoding='shift-jis', header=0)
+                                                 task + '-HostV_RoadInfo.csv'), encoding='shift-jis', header=0, dtype={'LC':'int8'})
                 roaDF = roaDF['LC']
                 surDF = pd.read_csv(os.path.join(DATA_PATH_6000, subject, task, subject +
-                                                 task + '-SurVehicleInfo.csv'), encoding='shift-jis', header=0)
+                                                 task + '-SurVehicleInfo.csv'), encoding='shift-jis', header=0, dtype='float16')
                 dataDict = {'drv': drvDF.as_matrix(
                 ), 'roa': roaDF.as_matrix(), 'sur': surDF.as_matrix()}
                 dataDicts.append(dataDict)
 
             bar.display_progressbar(i)
-
         return dataDicts
 
     # 0,1,2がdrv,road,surになってる保証なしだけど、アルファベット順のおかげかうまいこといっている。
@@ -591,19 +590,19 @@ class Container:
                 if i == 0:
                     self.behavior_names.append(data)
                     drvDF = pd.read_csv(os.path.join(
-                        DATA_PATH_9000, item, data), encoding='shift-jis', header=0)
+                        DATA_PATH_9000, item, data), encoding='shift-jis', header=0, dtype='float16')
                     drvDF = drvDF.drop(
                         ['time[sec]', 'lat[deg]', 'lon[deg]'], axis=1)
                     drvDF = drvDF.dropna()
                     dataDicts.append({'drv': drvDF.as_matrix()})
                 elif i == 1:
                     roaDF = pd.read_csv(os.path.join(
-                        DATA_PATH_9000, item, data), encoding='shift-jis', header=0)
+                        DATA_PATH_9000, item, data), encoding='shift-jis', header=0, dtype={'LC':'int8'})
                     roaDF = roaDF['LC']
                     dataDicts[j]['roa'] = roaDF.as_matrix()
                 elif i == 2:
                     surDF = pd.read_csv(os.path.join(
-                        DATA_PATH_9000, item, data), encoding='shift-jis', header=0)
+                        DATA_PATH_9000, item, data), encoding='shift-jis', header=0, dtype='float16')
                     dataDicts[j]['sur'] = surDF.as_matrix()
 
         return dataDicts

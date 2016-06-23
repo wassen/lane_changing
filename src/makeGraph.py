@@ -15,6 +15,6 @@ feature2 = args[2]
 
 #わかりやすく整理したい
 # loadの自動化
-ctn = Container(DataInput.loadOriginalData)
-ctn.show_plot(Container.Features(feature1), Container.Features(feature2), load=True)
+ctn = Container(DataInput.readFromCSVData)
+# ctn.show_plot(Container.Features(feature1), Container.Features(feature2), load=True)
 
