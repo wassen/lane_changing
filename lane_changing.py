@@ -52,6 +52,21 @@ class Sub(IntEnum):
     vy = 3
 
 
+class Label(IntEnum):
+    left_lanechanging = -2
+    begin_left_lanechange = -1
+    go_straight = 0
+    begin_right_lanechange = 1
+    right_lanechanging = 2
+    braking_and_go_straight = 3
+
+
+def dividebrakelabel(label, brake, threshold=0.4):
+    '''
+    直進ラベル(0)をブレーキ踏力のしきい値から0と3に分ける
+    '''
+    return [Label.braking_and_go_straight.value if b >= threshold and l == Label.go_straight else l for l,b in zip(label, brake)]
+
 class NeighborBlock:
     # 距離と速度だけは無限大のむきを考慮しなきゃいけないから、引数でなんとか処理を分岐
 
