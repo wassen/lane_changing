@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from enum import *
+from unittest import result
 
 from progressbar import ProgressBar as pb
-# untenkoudousuugaicchishiteimasenn
+# 運転行動数が一致しませんって言われてるんだが？
+# プログレスバーの既存モジュールを使うようにする。
+# setting.xmlとかの読み込みをしたいsafeconfigparser
 import matplotlib
 import numpy as np
 import os
@@ -47,6 +50,22 @@ class Sub(IntEnum):
     y0 = 1
     vx = 2
     vy = 3
+
+
+class Label(IntEnum):
+    left_lanechanging = -2
+    begin_left_lanechange = -1
+    go_straight = 0
+    begin_right_lanechange = 1
+    right_lanechanging = 2
+    braking_and_go_straight = 3
+
+
+def dividebrakelabel(label, brake, threshold=0.4):
+    '''
+    直進ラベル(0)をブレーキ踏力のしきい値から0と3に分ける
+    '''
+    return [Label.braking_and_go_straight.value if b >= threshold and l == Label.go_straight else l for l,b in zip(label, brake)]
 
 
 class NeighborBlock:
@@ -102,13 +121,17 @@ class NeighborBlock:
             self.distList[dist][side] = np.linalg.norm([x, y])
             self.featureList[dist][side] = feature
 
-    def get_list(self):
+    def get_original_list():
         return [feature for feature in self.featureList.reshape(27)]
 
     def get_list_atan(self):
         return [math.atan(feature) for feature in self.featureList.reshape(27)]
 
 # メソッドを呼ぶ順番を考えなきゃいけないクラスってどうなん？
+
+def percentile(list1, list2, radius):
+    dist = [np.linalg.norm([l1, l2]) for l1, l2 in zip(list1, list2)]
+    return sum(np.array(dist) < radius)/len(dist)*100
 
 def start_index(label):
 
@@ -138,8 +161,6 @@ class Container:
 
     WIDTH_OF_CARS = 2
     LENGTH_OF_CARS = 4
-
-
 
     def get_before_and_after_LC_label(label, before=100, after=100):
 
@@ -238,27 +259,35 @@ class Container:
         plt.clf()
 
     def concat_all_behavior(self, sequence):
-        return [sequence[name] for name in self.behavior_names]
+        result_list = []
+        for name in self.behavior_names:
+            result_list.extend(sequence[name])
+        return result_list
 
+# 描画範囲も引数指定
     def show_plot(self, feature1, feature2, load=False):
 
+        def savez(item, name):
+            np.savez_compressed(os.path.join(self.__class__.SCRIPT_DIR,
+                                  "tmp",
+                                  "{0}.npz".format(name)
+                                  ),
+                     item=item,
+                     )
+        def loadz(name):
+            return np.load(os.path.join(self.__class__.SCRIPT_DIR, "tmp", "{0}.npz".format(name)))["item"].tolist()
+
         if load:
-            element_of_graph = np.load(os.path.join(self.__class__.SCRIPT_DIR, "tmp", "graph_of_{0}_and_{1}.npz".format(feature1.value, feature2.value)))
-            x_dict = element_of_graph['x_dict']
-            y_dict = element_of_graph['y_dict']
-            label_list = element_of_graph['label_dict']
+            x_dict = loadz(feature1.value)
+            y_dict = loadz(feature2.value)
+            label_dict = loadz("label")
         else:
             x_dict, y_dict = self.feature_sequence(feature1, feature2)
             label_dict = self.label_sequence()
             os.makedirs(os.path.join(self.__class__.SCRIPT_DIR, "tmp"), exist_ok=True)
-            np.savez(os.path.join(self.__class__.SCRIPT_DIR,
-                                  "tmp",
-                                  "graph_of_{0}_and_{1}.npz".format(feature1.value, feature2.value)
-                                  ),
-                     x_dict=x_dict,
-                     y_dict=y_dict,
-                     label_dict=label_dict,
-                     )
+            savez(x_dict, feature1.value)
+            savez(y_dict, feature2.value)
+            savez(label_dict, "label")
 
         xlist_2dim = self.concat_all_behavior(x_dict)
         ylist_2dim = self.concat_all_behavior(y_dict)
@@ -266,21 +295,36 @@ class Container:
 
         b = start_index(label)
         c = list(b[0])
+        ddd = label[len(label) - 299:]
         c.extend(b[1])
-        label = [a if a == 0 or i in c else a*2 for i, a in enumerate(label)]
+        #ここでlabelがバグってそう。それか上のstartindex
+        start_labels = [a if a == 0 or i in c else a*2 for i, a in enumerate(label)]
 
         xlist = []
         ylist = []
         llist = []
 
-        for xlist_atmoment, ylist_atmoment, label in zip(xlist_2dim, ylist_2dim, label):
-            length_atmoment = len(xlist_atmoment)
-            if length_atmoment != len(ylist_atmoment):
-                print("ひとつ目の特徴とふたつ目の特徴において、特定フレームにおけるサイズの差異が検知されました。なんかおかしいです。")
-            xlist.extend(xlist_atmoment)
-            ylist.extend(ylist_atmoment)
-            llist.extend(list(np.ones(length_atmoment)*label))
+# 全車両ver
+#         for xlist_atmoment, ylist_atmoment, start_label in zip(xlist_2dim, ylist_2dim, start_label):
+#             length_atmoment = len(xlist_atmoment)
+#             if length_atmoment != len(ylist_atmoment):
+#                 print("ひとつ目の特徴とふたつ目の特徴において、特定フレームにおけるサイズの差異が検知されました。なんかおかしいです。")
+#             xlist.extend(xlist_atmoment)
+#             ylist.extend(ylist_atmoment)
+#             llist.extend(list(np.ones(length_atmoment)*start_label))
+# 最近傍ver
+        dist_2dim = self.concat_all_behavior(loadz(self.Features.Distance.value))
+        for xlist_atmoment, ylist_atmoment, dist_atmoment, start_label in zip(xlist_2dim, ylist_2dim, dist_2dim, start_labels):
+            if len(xlist_atmoment) == 0:
+                continue
+            min_index = np.argmin(np.array(dist_atmoment))
+            xlist.append(xlist_atmoment[min_index])
+            ylist.append(ylist_atmoment[min_index])
+            llist.append(start_label)
+        print(len(llist))
+        print(len(xlist))
 
+        llist = np.array(llist)
         left = (np.array(xlist)[np.where(llist == -1)],
                 np.array(ylist)[np.where(llist == -1)])
         straight = (np.array(xlist)[np.where(llist == 0)],
@@ -290,25 +334,59 @@ class Container:
         alpha = 0.50
         edgecolor = 'none'
 
-        # plt.scatter(*straight, color='#B122B2', alpha=alpha,
-        #             edgecolor=edgecolor, label="Straight")
+
+        # 暫定
+        plt.clf()
+        tmp1 = []
+        tmp2 = []
+        tmp1.extend(right[0])
+        tmp1.extend(left[0])
+        tmp2.extend(right[1])
+        tmp2.extend(left[1])
+        radiuses = np.arange(0, 12, 0.1)
+        print(tmp1)
+        print(tmp2)
+        plt.scatter(radiuses, [percentile(tmp1, tmp2, radius) for radius in radiuses],
+                   color='#2FCDB4',alpha=alpha, edgecolor=edgecolor)
+
+        plt.legend(scatterpoints=10)
+
+        os.makedirs(os.path.join(self.__class__.SCRIPT_DIR, "Graph/"), exist_ok=True)
+        plt.xlabel("Radius")
+        plt.ylabel("Percentile")
+        plt.savefig(os.path.join(self.__class__.SCRIPT_DIR,
+                                "Graph",
+                                "graph_of_{0}_and_{1}.png".format("Radius", "Percentile")
+                                )
+                   )
+        plt.clf()
+        # 暫定ここまで
+        print(right[0], right[1])
+        # このけっかおかしそう
+        print(llist[len(llist) - 450:])
+        radius = 3
+
+        plt.scatter(*straight, color='#B122B2', alpha=alpha,
+                    edgecolor=edgecolor, label="Straight")
         plt.scatter(*right, color='#2FCDB4', alpha=alpha,
                     edgecolor=edgecolor, label="Right_LC")
         plt.scatter(*left, color='#FBA848', alpha=alpha,
                     edgecolor=edgecolor, label="Left_LC")
+        # plt.Circle((0, 0), radius=radius, alpha=0)
+        # 車の順番がおかしい
+        #print(right[0], right[1])
 
         # この解決策はどうなんだ
         plt.legend(scatterpoints=100)
 
         # plt.title("{0} and {1}".format(feature1.value, feature2.value))
         plt.xlim(-12, 12)
+        #自動化？自分で考えたほうがいいのかも
         plt.ylim(-0, 120)
+        # plt.ylim(-12, 12)
         os.makedirs(os.path.join(self.__class__.SCRIPT_DIR, "Graph/"), exist_ok=True)
-        #自動化
-        # plt.xlabel("TimeToCollisionX[sec]")
-        # plt.ylabel("TimeToCollisionY[sec]")
-        plt.xlabel("TimeToClosestPoint[sec]")
-        plt.ylabel("DistanceToClosestPoint[m]")
+        plt.xlabel("{0}[{1}]".format(feature1.name, "sec" if "Time" in feature1.name else "deg"))
+        plt.ylabel("{0}[{1}]".format(feature2.name, "sec" if "Time" in feature2.name else "m"))
         plt.savefig(os.path.join(self.__class__.SCRIPT_DIR,
                                  "Graph",
                                  "graph_of_{0}_and_{1}.png".format(feature1.value, feature2.value)
@@ -370,13 +448,11 @@ class Container:
         """
 
         def feature_list_from_data_dict(feature, data_dict):
-            # ここがおかしいよ
-            for surrounding_data, lanechanging_data in zip(data_dict['sur'], data_dict['roa']):
-                feature_list = []
-                for sur_at_moment, lc_at_moment in zip(surrounding_data, lanechanging_data):
-                    feature_at_moment = []
-                    for car in self.get_cars(sur_at_moment):
-                        feature_at_moment.append(self.calc_feature_from_car(car, feature))
+            feature_list = []
+            for sur_at_moment, lc_at_moment in zip(data_dict['sur'], data_dict['roa']):
+                feature_at_moment = []
+                for car in self.get_cars(sur_at_moment):
+                    feature_at_moment.append(self.calc_feature_from_car(car, feature))
                 feature_list.append(feature_at_moment)
             return feature_list
 
@@ -396,6 +472,7 @@ class Container:
         TimeToCollisionX = "ttcx"
         TimeToCollisionY = "ttcy"
         Distance = "dist"
+        Degree = "deg"
 
     def calc_feature_from_car(self, car, feature):
         x = car[0]
@@ -427,7 +504,9 @@ class Container:
         elif feature.value == "dist":
             import math
             return math.sqrt(x**2 + y**2)
-
+        elif feature.value == "deg":
+            import math
+            return math.atan2(y, x)/math.pi*180
 
     # def show_plot(self, nameOfFeature):
     #     i = self.featureNames.index(nameOfFeature)
@@ -508,6 +587,7 @@ class Container:
         bar = pb(sorted(os.listdir(DATA_PATH_9000)))
         for i, item in enumerate(bar.generator(0)):
             for j, data in enumerate(sorted(os.listdir(os.path.join(DATA_PATH_9000, item)))):
+                print(data)
                 if i == 0:
                     self.behavior_names.append(data)
                     drvDF = pd.read_csv(os.path.join(
