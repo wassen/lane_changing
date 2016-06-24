@@ -9,7 +9,7 @@ def calc_timeToClosestPoint(self, car):
         return float('inf'), float('inf')
 
     import math
-    
+
     timeToClosestPoint = -(x * vx + y * vy) / (vx ** 2 + vy ** 2)
     distanceToClosestPoint = abs(x * vy - y * vx) / math.sqrt(vx ** 2 + vy ** 2)
     
