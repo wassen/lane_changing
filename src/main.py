@@ -577,7 +577,6 @@ class Container:
             bar.display_progressbar(i)
         return dataDicts
 
-    # 0,1,2がdrv,road,surになってる保証なしだけど、アルファベット順のおかげかうまいこといっている。
     def read_9000(self):
         DATA_PATH_9000 = self.__class__.DATA_PATH_9000
         dataDicts = []
