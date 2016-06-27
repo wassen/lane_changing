@@ -1,10 +1,8 @@
 #!/usr/bin/env python
 import os
 import sys
-# ./makeGraph ttcx ttcy 使える引数を自動でエラーに出力したい。
-path = os.path.join(os.path.dirname(__file__), '../')
-sys.path.append(path)
-from lane_changing import Container, DataInput
+# ./makeGraph ttcx ttcy
+from main import Container, DataInput, Features
 
 args = sys.argv
 # ここのやつ
@@ -15,6 +13,6 @@ feature2 = args[2]
 
 #わかりやすく整理したい
 # loadの自動化
-ctn = Container(DataInput.readFromCSVData)
-# ctn.show_plot(Container.Features(feature1), Container.Features(feature2), load=True)
+ctn = Container(DataInput.loadOriginalData)
+ctn.show_plot(Features(feature1), Features(feature2), load=True)
 
