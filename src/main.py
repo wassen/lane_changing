@@ -1,15 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from enum import *
-from unittest import result
 
-from progressbar import ProgressBar as pb
-# 運転行動数が一致しませんって言われてるんだが？
-# プログレスバーの既存モジュールを使うようにする。
-# setting.xmlとかの読み込みをしたいsafeconfigparser
+# import unittest
+
+from enum import *
+from progre import Progre as pb
 import matplotlib
 import numpy as np
 import os
+import sys
 import math
 import pandas as pd
 from sympy import *
@@ -50,6 +49,22 @@ class Sub(IntEnum):
     y0 = 1
     vx = 2
     vy = 3
+
+
+class Label(IntEnum):
+    left_lanechanging = -2
+    begin_left_lanechange = -1
+    go_straight = 0
+    begin_right_lanechange = 1
+    right_lanechanging = 2
+    braking_and_go_straight = 3
+
+
+def dividelabelwithbrake(label, brake, threshold=0.4):
+    '''
+    直進ラベル(0)をブレーキ踏力のしきい値から0と3に分ける
+    '''
+    return [Label.braking_and_go_straight.value if b >= threshold and l == Label.go_straight else l for l,b in zip(label, brake)]
 
 
 class NeighborBlock:
@@ -138,15 +153,33 @@ def start_index(label):
         previous = l
     return np.delete(rLcLabel, rDelList), np.delete(lLcLabel, lDelList)
 
+class Features(Enum):
+    # note:name = value
+    TimeToClosestPoint = "ttcp"
+    DistanceToClosestPoint = "dtcp"
+    TimeToCollisionX = "ttcx"
+    TimeToCollisionY = "ttcy"
+    Distance = "dist"
+    Degree = "deg"
+
+    def unit(self):
+        if 'Time' in self.name:
+            return 'sec'
+        elif "Distance" in self.name:
+            return 'm'
+        elif self.name == "Degree":
+            return 'deg'
+
 class Container:
-    SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
-    DATA_PATH_6000 = os.path.join(SCRIPT_DIR, 'data/Original/6000/')
-    DATA_PATH_9000 = os.path.join(SCRIPT_DIR, 'data/Original/9000/')
+    REPOSITORY_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../'))
+    DATA_PATH_6000 = os.path.join(REPOSITORY_DIR, 'data/Original/6000/')
+    DATA_PATH_9000 = os.path.join(REPOSITORY_DIR, 'data/Original/9000/')
 
     WIDTH_OF_CARS = 2
     LENGTH_OF_CARS = 4
 
-
+    def makeprojectdir(self, dir):
+        os.makedirs(os.path.join(self.__class__.REPOSITORY_DIR, dir), exist_ok=True)
 
     def get_before_and_after_LC_label(label, before=100, after=100):
 
@@ -197,7 +230,7 @@ class Container:
 
         i = self.featureNames.index(nameOfFeature)
         plt.legend()
-        # plt.title("Graph Title")
+        # plt.title("graph Title")
         # plt.xlim([tmp_label[0]/10,tmp_label[len(tmp_label) - 1]]/10)
 
         le = []
@@ -211,14 +244,14 @@ class Container:
         le = np.delete(np.array(le), np.where(np.array(le) == float('-inf')))
         plt.hist(le)
 
-        os.makedirs('Graph/', exist_ok=True)
+        self.makeprojectdir("graph")
         plt.xlabel("Value")
         plt.ylabel(nameOfFeature)
-        plt.savefig('Graph/' + nameOfFeature + "_r" + '.pdf')
+        plt.savefig(os.path.join(self.__class__.REPOSITORY_DIR, 'graph',nameOfFeature + "_r" + '.pdf'))
         plt.clf()
 
         plt.legend()
-        # plt.title("Graph Title")
+        # plt.title("graph Title")
         # plt.xlim([tmp_label[0]/10,tmp_label[len(tmp_label) - 1]]/10)
 
         le = []
@@ -234,46 +267,60 @@ class Container:
         plt.hist(le)
 
         # ファイル名周り未検証
-        os.makedirs(os.path.join(self.__class__.SCRIPT_DIR, 'Graph/'), exist_ok=True)
+        self.makeprojectdir("graph")
 
         plt.xlabel("Value")
         plt.ylabel(nameOfFeature)
-        plt.savefig(os.path.join(self.__class__.SCRIPT_DIR,
-                                 "Graph",
+        plt.savefig(os.path.join(self.__class__.REPOSITORY_DIR,
+                                 "graph",
                                  nameOfFeature.replace('\\', "{BSlash}") + "_l" + '.pdf')
                     )
         plt.clf()
 
     def concat_all_behavior(self, sequence):
         result_list = []
-        for name in self.behavior_names:
+        for name in self.behaviornames:
             result_list.extend(sequence[name])
         return result_list
 
-# 描画範囲も引数指定
-    def show_plot(self, feature1, feature2, load=False):
+    def show_plot(self, feature1, feature2, xlim = (-12, 12), ylim=(-120, 120),  load=False):
+        """
+        特徴量を二次元でグラフにプロットする。
+        :param feature1: 
+        :param feature2: 
+        :param xlim: 
+        :param ylim: 
+        :param load: 
+        :return: 
+        """
+        def save_features_and_labels():
+            def savetotmp(item, name):
+                self.makeprojectdir('tmp')
+                np.savez_compressed(os.path.join(self.__class__.REPOSITORY_DIR,
+                                      "tmp",
+                                      "{0}.npz".format(name)
+                                                 ),
+                         item=item,
+                         )
+            print("tmpフォルダに特徴とラベルを保存しています。")
+            savetotmp(x_dict, feature1.value)
+            savetotmp(y_dict, feature2.value)
+            savetotmp(label_dict, "label")
+            print("保存完了しました。")
 
-        def savez(item, name):
-            np.savez_compressed(os.path.join(self.__class__.SCRIPT_DIR,
-                                  "tmp",
-                                  "{0}.npz".format(name)
-                                  ),
-                     item=item,
-                     )
-        def loadz(name):
-            return np.load(os.path.join(self.__class__.SCRIPT_DIR, "tmp", "{0}.npz".format(name)))["item"].tolist()
+        def load_features_and_labels():
+            def loadz(name):
+                return np.load(os.path.join(self.__class__.REPOSITORY_DIR, "tmp", "{0}.npz".format(name)))["item"].tolist()
+            
+            return loadz(feature1.value), loadz(feature2.value), loadz("label")
 
         if load:
-            x_dict = loadz(feature1.value)
-            y_dict = loadz(feature2.value)
-            label_dict = loadz("label")
+            print("ロード中です。")
+            x_dict, y_dict, label_dict = load_features_and_labels()
+            print("ロード完了しました。")
         else:
-            x_dict, y_dict = self.feature_sequence(feature1, feature2)
-            label_dict = self.label_sequence()
-            os.makedirs(os.path.join(self.__class__.SCRIPT_DIR, "tmp"), exist_ok=True)
-            savez(x_dict, feature1.value)
-            savez(y_dict, feature2.value)
-            savez(label_dict, "label")
+            x_dict, y_dict, label_dict = *self.feature_subjectdict(feature1, feature2), self.label_subjectdict_brakefiltered()
+            save_features_and_labels()
 
         xlist_2dim = self.concat_all_behavior(x_dict)
         ylist_2dim = self.concat_all_behavior(y_dict)
@@ -283,32 +330,35 @@ class Container:
         c = list(b[0])
         ddd = label[len(label) - 299:]
         c.extend(b[1])
-        #ここでlabelがバグってそう。それか上のstartindex
         start_labels = [a if a == 0 or i in c else a*2 for i, a in enumerate(label)]
 
         xlist = []
         ylist = []
         llist = []
 
-# 全車両ver
-#         for xlist_atmoment, ylist_atmoment, start_label in zip(xlist_2dim, ylist_2dim, start_label):
-#             length_atmoment = len(xlist_atmoment)
-#             if length_atmoment != len(ylist_atmoment):
-#                 print("ひとつ目の特徴とふたつ目の特徴において、特定フレームにおけるサイズの差異が検知されました。なんかおかしいです。")
-#             xlist.extend(xlist_atmoment)
-#             ylist.extend(ylist_atmoment)
-#             llist.extend(list(np.ones(length_atmoment)*start_label))
-# 最近傍ver
-        dist_2dim = self.concat_all_behavior(loadz(self.Features.Distance.value))
-        for xlist_atmoment, ylist_atmoment, dist_atmoment, start_label in zip(xlist_2dim, ylist_2dim, dist_2dim, start_labels):
-            if len(xlist_atmoment) == 0:
-                continue
-            min_index = np.argmin(np.array(dist_atmoment))
-            xlist.append(xlist_atmoment[min_index])
-            ylist.append(ylist_atmoment[min_index])
-            llist.append(start_label)
-        print(len(llist))
-        print(len(xlist))
+        # 全車両ver
+        # for xlist_atmoment, ylist_atmoment, start_label in zip(xlist_2dim, ylist_2dim, start_label):
+        #     length_atmoment = len(xlist_atmoment)
+        #     if length_atmoment != len(ylist_atmoment):
+        #         print("ひとつ目の特徴とふたつ目の特徴において、特定フレームにおけるサイズの差異が検知されました。なんかおかしいです。")
+        #     xlist.extend(xlist_atmoment)
+        #     ylist.extend(ylist_atmoment)
+        #     llist.extend(list(np.ones(length_atmoment)*start_label))
+
+        # 最近傍ver
+        # # code clone そもそもDistで車を区切るのなんてここでやることじゃない。
+        # def loadz(name):
+        #     return np.load(os.path.join(self.__class__.REPOSITORY_DIR, "tmp", "{0}.npz".format(name)))["item"].tolist()
+        # dist_2dim = self.concat_all_behavior(loadz(Features.Distance.value))
+        # for xlist_atmoment, ylist_atmoment, dist_atmoment, start_label in zip(xlist_2dim, ylist_2dim, dist_2dim, start_labels):
+        #     if len(xlist_atmoment) == 0:
+        #         continue
+        #     min_index = np.argmin(np.array(dist_atmoment))
+        #     xlist.append(xlist_atmoment[min_index])
+        #     ylist.append(ylist_atmoment[min_index])
+        #     llist.append(start_label)
+        # print(len(llist))
+        # print(len(xlist))
 
         llist = np.array(llist)
         left = (np.array(xlist)[np.where(llist == -1)],
@@ -337,20 +387,16 @@ class Container:
 
         plt.legend(scatterpoints=10)
 
-        os.makedirs(os.path.join(self.__class__.SCRIPT_DIR, "Graph/"), exist_ok=True)
+        self.makeprojectdir("data")
         plt.xlabel("Radius")
         plt.ylabel("Percentile")
-        plt.savefig(os.path.join(self.__class__.SCRIPT_DIR,
-                                "Graph",
+        plt.savefig(os.path.join(self.__class__.REPOSITORY_DIR,
+                                "graph",
                                 "graph_of_{0}_and_{1}.png".format("Radius", "Percentile")
-                                )
+                                 )
                    )
         plt.clf()
         # 暫定ここまで
-        print(right[0], right[1])
-        # このけっかおかしそう
-        print(llist[len(llist) - 450:])
-        radius = 3
 
         plt.scatter(*straight, color='#B122B2', alpha=alpha,
                     edgecolor=edgecolor, label="Straight")
@@ -358,29 +404,29 @@ class Container:
                     edgecolor=edgecolor, label="Right_LC")
         plt.scatter(*left, color='#FBA848', alpha=alpha,
                     edgecolor=edgecolor, label="Left_LC")
-        # plt.Circle((0, 0), radius=radius, alpha=0)
+
+        # 円を描くとき
+        # plt.Circle((0, 0), radius=3, alpha=0)
+        
         # 車の順番がおかしい
         #print(right[0], right[1])
 
-        # この解決策はどうなんだ
-        plt.legend(scatterpoints=100)
+        plt.legend(scatterpoints=int(1/alpha))# 薄い時にレジェンドが見えるように数を増やす試み 二乗してもいいか？
 
         # plt.title("{0} and {1}".format(feature1.value, feature2.value))
-        plt.xlim(-12, 12)
-        plt.xlim(-180, 180)
-        #自動化？自分で考えたほうがいいのかも
-        plt.ylim(-0, 120)
-        # plt.ylim(-12, 12)
-        os.makedirs(os.path.join(self.__class__.SCRIPT_DIR, "Graph/"), exist_ok=True)
-        plt.xlabel("{0}[{1}]".format(feature1.name, "sec" if "Time" in feature1.name else "deg"))
-        plt.ylabel("{0}[{1}]".format(feature2.name, "sec" if "Time" in feature2.name else "m"))
-        plt.savefig(os.path.join(self.__class__.SCRIPT_DIR,
-                                 "Graph",
+        plt.xlim(*xlim)
+        plt.ylim(*ylim)
+        plt.xlabel("{0}[{1}]".format(feature1.name, feature1.unit))
+        plt.ylabel("{0}[{1}]".format(feature2.name, feature2.unit))
+        self.makeprojectdir("data")
+        plt.savefig(os.path.join(self.__class__.REPOSITORY_DIR,
+                                 "graph",
                                  "graph_of_{0}_and_{1}.png".format(feature1.value, feature2.value)
                                  )
                     )
         plt.clf()
 
+    # deprecated
     def get_label_start_sequence(self):
         labels = [lc for dataDict in self.data_dicts for lc in dataDict['roa']]
         sur_rows = [sur_row for sur in [dataDict['sur'] for dataDict in self.data_dicts] for sur_row in sur]
@@ -398,6 +444,7 @@ class Container:
                 label_list.append(label)
         return label_list
 
+    # deprecated
     def get_label_sequence(self):
 
         labels = [lc for dataDict in self.data_dicts for lc in dataDict['roa']]
@@ -418,14 +465,32 @@ class Container:
                 feature_list.append(self.calc_feature_from_car(car, feature))
         return feature_list
 
-    def label_sequence(self):
+
+    def label_subjectdict_brakefiltered(self):
+        '''
+        オリジナルのラベルデータから、被験者名ごとの辞書にして渡す。
+        :return: ？？？
+        '''
         # data_dictsのデータ構造を被験者ごとにしたい感じはある。
         label_dict = {}
-        for name, data_dict in zip(self.behavior_names, self.data_dicts):
-            label_dict[name] = data_dict['roa']
+        
+        # 暫定的にlabelを変更する策に出る
+        for name, data_dict in zip(pb.single_generator(self.behaviornames), self.data_dicts):
+            label_dict[name] = dividelabelwithbrake(data_dict['roa'], data_dict['drv'][:,0],threshold=1)
         return label_dict
+    # def label_sequence(self):
+    #     '''
+    #     オリジナルのラベルデータから、被験者名ごとの辞書にして渡す。
+    #     :return: ？？？
+    #     '''
+    #     # data_dictsのデータ構造を被験者ごとにしたい感じはある。
+    #     label_dict = {}
+    #     
+    #     for name, data_dict in zip(self.behavior_names, self.data_dicts):
+    #         label_dict[name] = data_dict['roa']
+    #     return label_dict
 
-    def feature_sequence(self, *features):
+    def feature_subjectdict(self, *features):
         """
         データ構造
         ある瞬間の周辺車に対する特徴
@@ -446,20 +511,11 @@ class Container:
         feature_dicts = []
         for feature in features:
             feature_dict = {}
-            for data_dict, subjectName in zip(self.data_dicts, self.behavior_names):
+            for data_dict, subjectName in zip(pb.single_generator(self.data_dicts), self.behaviornames):
                 feature_dict[subjectName] = feature_list_from_data_dict(feature, data_dict)
             feature_dicts.append(feature_dict)
         return feature_dicts
 
-
-
-    class Features(Enum):
-        TimeToClosestPoint = "ttcp"
-        DistanceToClosestPoint = "dtcp"
-        TimeToCollisionX = "ttcx"
-        TimeToCollisionY = "ttcy"
-        Distance = "dist"
-        Degree = "deg"
 
     def calc_feature_from_car(self, car, feature):
         x = car[0]
@@ -476,7 +532,6 @@ class Container:
             if vx == 0 and vy == 0:
                 return float('inf')
             else:
-                import math
                 return abs(x * vy - y * vx) / math.sqrt(vx ** 2 + vy ** 2)
         elif feature.value == "ttcx":
             if np.isnan((x - self.WIDTH_OF_CARS * np.sign(x)) * 1000 / vx / 3600):
@@ -489,10 +544,8 @@ class Container:
             else:
                 return (y - self.LENGTH_OF_CARS * np.sign(y)) * 1000 / vy / 3600
         elif feature.value == "dist":
-            import math
             return math.sqrt(x**2 + y**2)
         elif feature.value == "deg":
-            import math
             return math.atan2(y, x)/math.pi*180
 
     # def show_plot(self, nameOfFeature):
@@ -526,15 +579,18 @@ class Container:
     #                 plt.legend()
     #                 flag = False
     #
-    #                 # plt.title("Graph Title")
+    #                 # plt.title("graph Title")
     #                 # plt.xlim([tmp_label[0]/10,tmp_label[len(tmp_label) - 1]]/10)
     #
-    #     os.makedirs('Graph/', exist_ok=True)
+    #     os.makedirs('graph/', exist_ok=True)
     #     plt.xlabel("Time[sec]")
     #     plt.ylabel(nameOfFeature)
-    #     plt.savefig('Graph/' + nameOfFeature + '.pdf')
+    #     plt.savefig('graph/' + nameOfFeature + '.pdf')
     #     plt.clf()
 
+# read の段階で単位を揃えたい
+    
+    # ラベルの段階でroaとかじゃなくて特徴名(LCとか)でアクセスできるようにすればいいんじゃないの？
     def read_6000(self):
         DATA_PATH_6000 = self.__class__.DATA_PATH_6000
         dataDicts = []
@@ -546,26 +602,24 @@ class Container:
 
         for i, subject in enumerate(tmpList):
             for task in sorted(os.listdir(os.path.join(DATA_PATH_6000, subject))):
-                self.behavior_names.append(subject + task)
+                self.behaviornames.append(subject + task)
                 drvDF = pd.read_csv(os.path.join(DATA_PATH_6000, subject, task, subject + task + '-HostV_DrvInfo.csv'),
                                     encoding='shift-jis', header=0,
-                                    names=['time', 'brake', 'gas', 'vel', 'steer', 'accX', 'accY', 'accZ', 'NaN'])
+                                    names=['time', 'brake', 'gas', 'vel', 'steer', 'accX', 'accY', 'accZ', 'NaN'], dtype='float16')
                 drvDF = drvDF.drop(['time', 'NaN'], axis=1)
                 # drvDF = drvDF.fillna(method='ffill')#暫定処置。
                 roaDF = pd.read_csv(os.path.join(DATA_PATH_6000, subject, task, subject +
-                                                 task + '-HostV_RoadInfo.csv'), encoding='shift-jis', header=0)
+                                                 task + '-HostV_RoadInfo.csv'), encoding='shift-jis', header=0, dtype={'LC':'int8'})
                 roaDF = roaDF['LC']
                 surDF = pd.read_csv(os.path.join(DATA_PATH_6000, subject, task, subject +
-                                                 task + '-SurVehicleInfo.csv'), encoding='shift-jis', header=0)
+                                                 task + '-SurVehicleInfo.csv'), encoding='shift-jis', header=0, dtype='float16')
                 dataDict = {'drv': drvDF.as_matrix(
                 ), 'roa': roaDF.as_matrix(), 'sur': surDF.as_matrix()}
                 dataDicts.append(dataDict)
 
             bar.display_progressbar(i)
-
         return dataDicts
 
-    # 0,1,2がdrv,road,surになってる保証なしだけど、アルファベット順のおかげかうまいこといっている。
     def read_9000(self):
         DATA_PATH_9000 = self.__class__.DATA_PATH_9000
         dataDicts = []
@@ -576,40 +630,40 @@ class Container:
             for j, data in enumerate(sorted(os.listdir(os.path.join(DATA_PATH_9000, item)))):
                 print(data)
                 if i == 0:
-                    self.behavior_names.append(data)
+                    self.behaviornames.append(data)
                     drvDF = pd.read_csv(os.path.join(
-                        DATA_PATH_9000, item, data), encoding='shift-jis', header=0)
+                        DATA_PATH_9000, item, data), encoding='shift-jis', header=0, dtype='float16')
                     drvDF = drvDF.drop(
                         ['time[sec]', 'lat[deg]', 'lon[deg]'], axis=1)
                     drvDF = drvDF.dropna()
                     dataDicts.append({'drv': drvDF.as_matrix()})
                 elif i == 1:
                     roaDF = pd.read_csv(os.path.join(
-                        DATA_PATH_9000, item, data), encoding='shift-jis', header=0)
+                        DATA_PATH_9000, item, data), encoding='shift-jis', header=0, dtype={'LC':'int8'})
                     roaDF = roaDF['LC']
                     dataDicts[j]['roa'] = roaDF.as_matrix()
                 elif i == 2:
                     surDF = pd.read_csv(os.path.join(
-                        DATA_PATH_9000, item, data), encoding='shift-jis', header=0)
+                        DATA_PATH_9000, item, data), encoding='shift-jis', header=0, dtype='float16')
                     dataDicts[j]['sur'] = surDF.as_matrix()
 
         return dataDicts
 
     def save_dataDicts(self):
-        os.makedirs('data', exist_ok=True)
-        np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "dataDicts.npy"), self.data_dicts)
-        np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "subjectNames.npy"), self.behavior_names)
+        self.makeprojectdir("data")
+        np.save(os.path.join(self.__class__.REPOSITORY_DIR, "data", "dataDicts.npy"), self.data_dicts)
+        np.save(os.path.join(self.__class__.REPOSITORY_DIR, "data", "behaviornames.npy"), self.behaviornames)
 
     def save_vectors(self):
-        os.makedirs('data', exist_ok=True)
-        np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "twoDimVectors.npy"), self.twoDimVectors)
-        np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "oneDimVectors.npy"), self.oneDimVectors)
-        np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "featureNames.npy"), self.featureNames)
+        self.makeprojectdir("data")
+        np.save(os.path.join(self.__class__.REPOSITORY_DIR, "data", "twoDimVectors.npy"), self.twoDimVectors)
+        np.save(os.path.join(self.__class__.REPOSITORY_DIR, "data", "oneDimVectors.npy"), self.oneDimVectors)
+        np.save(os.path.join(self.__class__.REPOSITORY_DIR, "data", "featureNames.npy"), self.featureNames)
 
     def save_label_and_feature(self):
-        os.makedirs('data', exist_ok=True)
-        np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "feature.npy"), self.feature)
-        np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "label.npy"), self.label)
+        self.makeprojectdir("data")
+        np.save(os.path.join(self.__class__.REPOSITORY_DIR, "data", "feature.npy"), self.feature)
+        np.save(os.path.join(self.__class__.REPOSITORY_DIR, "data", "label.npy"), self.label)
 
     def adjust_size(self):
         for dataDict in self.data_dicts:
@@ -791,8 +845,8 @@ class Container:
                 ttcpBlock = NeighborBlock()
                 dtcpBlock = NeighborBlock()
                 for car in cars:
-                    ttcpBlock.add(self.calc_feature_from_car(car, self.Features.TimeToClosestPoint), car[0], car[1])
-                    dtcpBlock.add(self.calc_feature_from_car(car, self.Features.DistanceToClosestPoint), car[0], car[1])
+                    ttcpBlock.add(self.calc_feature_from_car(car, Features.TimeToClosestPoint), car[0], car[1])
+                    dtcpBlock.add(self.calc_feature_from_car(car, Features.DistanceToClosestPoint), car[0], car[1])
 
                 ttcp_row = ttcpBlock.get_list_atan()
                 dtcp_row = dtcpBlock.get_list()
@@ -954,20 +1008,26 @@ class Container:
         self.twoDimVectors = []
         self.oneDimVectors = None
         self.featureNames = []
-        self.behavior_names = []
+        self.behaviornames = []
         if dataInput.value == 'read':
             d = []
             d.extend(self.read_6000())
             d.extend(self.read_9000())
             self.data_dicts = d
         elif dataInput.value == 'origin':
-            self.data_dicts = np.load(os.path.join(self.__class__.SCRIPT_DIR, "data", "dataDicts.npy"))
-            self.behavior_names = np.load(os.path.join(self.__class__.SCRIPT_DIR, "data", "subjectNames.npy"))
+            datadicts_path = os.path.join(self.__class__.REPOSITORY_DIR, "data", "dataDicts.npy")
+            behaviornames_path = os.path.join(self.__class__.REPOSITORY_DIR, "data", "behaviornames.npy")
+            self.data_dicts = np.load(datadicts_path)
+            self.behaviornames = np.load(behaviornames_path)
+            print("読み込みが完了しました。")
         elif dataInput.value == 'vector':
-            np.save(os.path.join(self.__class__.SCRIPT_DIR, "data", "dataDicts.npy"), self.data_dicts)
+            np.save(os.path.join(self.__class__.REPOSITORY_DIR, "data", "dataDicts.npy"), self.data_dicts)
 
-            self.oneDimVectors = np.load(os.path.join(self.__class__.SCRIPT_DIR, "data", "oneDimVectors.npy"))
-            self.twoDimVectors = np.load(os.path.join(self.__class__.SCRIPT_DIR, "data", "twoDimVectors.npy"))
-            self.featureNames = np.load(os.path.join(self.__class__.SCRIPT_DIR, "data", "featureNames.npy"))
+            self.oneDimVectors = np.load(os.path.join(self.__class__.REPOSITORY_DIR, "data", "oneDimVectors.npy"))
+            self.twoDimVectors = np.load(os.path.join(self.__class__.REPOSITORY_DIR, "data", "twoDimVectors.npy"))
+            self.featureNames = np.load(os.path.join(self.__class__.REPOSITORY_DIR, "data", "featureNames.npy"))
         else:
             print("初期化に失敗しました。第一引数には列挙体DataInputの値を入力してください")
+
+if __name__ == '__main__':
+    print("lane_changing utility")

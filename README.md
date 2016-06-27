@@ -19,7 +19,7 @@
 $ git clone これ  
 $ source activate  
 $ pip install -U pip  
-$ pip install virtualenv  
+$ pip install pyvenv  
 $ virtualenv .virtualenv  
 $ source activate  
 $ pip install wheelhouse/*  
