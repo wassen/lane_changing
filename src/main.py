@@ -351,17 +351,19 @@ class Container:
         #     llist.extend(list(np.ones(length_atmoment)*start_label))
 
         # 最近傍ver
-        # code clone そもそもDistで車を区切るのなんてここでやることじゃない。
-        def loadz(name):
-            return np.load(os.path.join(self.__class__.REPOSITORY_DIR, "tmp", "{0}.npz".format(name)))["item"].tolist()
-        dist_2dim = self.concat_all_behavior(loadz(Features.Distance.value))
-        for xlist_atmoment, ylist_atmoment, dist_atmoment, start_label in zip(xlist_2dim, ylist_2dim, dist_2dim, start_labels):
-            if len(xlist_atmoment) == 0:
-                continue
-            min_index = np.argmin(np.array(dist_atmoment))
-            xlist.append(xlist_atmoment[min_index])
-            ylist.append(ylist_atmoment[min_index])
-            llist.append(start_label)
+        # # code clone そもそもDistで車を区切るのなんてここでやることじゃない。
+        # def loadz(name):
+        #     return np.load(os.path.join(self.__class__.REPOSITORY_DIR, "tmp", "{0}.npz".format(name)))["item"].tolist()
+        # dist_2dim = self.concat_all_behavior(loadz(Features.Distance.value))
+        # for xlist_atmoment, ylist_atmoment, dist_atmoment, start_label in zip(xlist_2dim, ylist_2dim, dist_2dim, start_labels):
+        #     if len(xlist_atmoment) == 0:
+        #         continue
+        #     min_index = np.argmin(np.array(dist_atmoment))
+        #     xlist.append(xlist_atmoment[min_index])
+        #     ylist.append(ylist_atmoment[min_index])
+        #     llist.append(start_label)
+        # print(len(llist))
+        # print(len(xlist))
 
         llist = np.array(llist)
         left = (np.array(xlist)[np.where(llist == Label.begin_left_lanechange)],
@@ -636,6 +638,7 @@ class Container:
                 dataDict = {'drv': drvDF.as_matrix(
                 ), 'roa': roaDF.as_matrix(), 'sur': surDF.as_matrix()}
                 dataDicts.append(dataDict)
+            #pandastameshi
             bar.display_progressbar(i)
         return dataDicts
 

@@ -3,5 +3,5 @@ progreに以降
 
 # 運転行動数が一致しませんって言われてるんだが？
 # プログレスバーの既存モジュールを使うようにする。->Qiitaにとうこうしたやつの返信とか、それか自分のやつにコミットするか。
-# setting.iniとかの読み込みをしたいsafeconfigparser
 # pandasDataframeのmethodに追加してsurとかを定義するか
+# setting.iniとかの読み込みをしたいsafeconfigparser
