@@ -15,4 +15,3 @@ feature2 = args[2]
 # loadの自動化
 ctn = Container(DataInput.loadOriginalData)
 ctn.show_plot(Features(feature1), Features(feature2), load=True)
-

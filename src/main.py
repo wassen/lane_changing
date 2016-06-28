@@ -24,7 +24,10 @@ class DataInput(Enum):
 
 
 # クラス内クラスとかできるのか。バウンドインナークラス？
-
+# リストじゃなくて辞書で。carとか
+# くそみたいな変数名を修正
+# pandasどうしよう。surだけ取り出すってのがめんどくさくなりそう。
+#
 
 class Dist(IntEnum):
     exFarFront = 0
@@ -60,7 +63,7 @@ class Label(IntEnum):
     braking_and_go_straight = 3
 
 
-def dividelabelwithbrake(label, brake, threshold=0.4):
+def dividelabelwithbrake(label, brake, threshold=5):
     '''
     直進ラベル(0)をブレーキ踏力のしきい値から0と3に分ける
     '''
@@ -283,7 +286,7 @@ class Container:
             result_list.extend(sequence[name])
         return result_list
 
-    def show_plot(self, feature1, feature2, xlim = (-12, 12), ylim=(-120, 120),  load=False):
+    def show_plot(self, feature1, feature2, xlim = (-12, 12), ylim=(-12, 12),  load=False):
         """
         特徴量を二次元でグラフにプロットする。
         :param feature1: 
@@ -320,6 +323,8 @@ class Container:
             print("ロード完了しました。")
         else:
             x_dict, y_dict, label_dict = *self.feature_subjectdict(feature1, feature2), self.label_subjectdict_brakefiltered()
+            # x_dict, y_dict, label_dict = load_features_and_labels()
+            # label_dict = self.label_subjectdict_brakefiltered()
             save_features_and_labels()
 
         xlist_2dim = self.concat_all_behavior(x_dict)
@@ -330,7 +335,7 @@ class Container:
         c = list(b[0])
         ddd = label[len(label) - 299:]
         c.extend(b[1])
-        start_labels = [a if a == 0 or i in c else a*2 for i, a in enumerate(label)]
+        start_labels = [a if not (a == 1 or a == -1) or i in c else a*2 for i, a in enumerate(label)]
 
         xlist = []
         ylist = []
@@ -346,64 +351,68 @@ class Container:
         #     llist.extend(list(np.ones(length_atmoment)*start_label))
 
         # 最近傍ver
-        # # code clone そもそもDistで車を区切るのなんてここでやることじゃない。
-        # def loadz(name):
-        #     return np.load(os.path.join(self.__class__.REPOSITORY_DIR, "tmp", "{0}.npz".format(name)))["item"].tolist()
-        # dist_2dim = self.concat_all_behavior(loadz(Features.Distance.value))
-        # for xlist_atmoment, ylist_atmoment, dist_atmoment, start_label in zip(xlist_2dim, ylist_2dim, dist_2dim, start_labels):
-        #     if len(xlist_atmoment) == 0:
-        #         continue
-        #     min_index = np.argmin(np.array(dist_atmoment))
-        #     xlist.append(xlist_atmoment[min_index])
-        #     ylist.append(ylist_atmoment[min_index])
-        #     llist.append(start_label)
-        # print(len(llist))
-        # print(len(xlist))
+        # code clone そもそもDistで車を区切るのなんてここでやることじゃない。
+        def loadz(name):
+            return np.load(os.path.join(self.__class__.REPOSITORY_DIR, "tmp", "{0}.npz".format(name)))["item"].tolist()
+        dist_2dim = self.concat_all_behavior(loadz(Features.Distance.value))
+        for xlist_atmoment, ylist_atmoment, dist_atmoment, start_label in zip(xlist_2dim, ylist_2dim, dist_2dim, start_labels):
+            if len(xlist_atmoment) == 0:
+                continue
+            min_index = np.argmin(np.array(dist_atmoment))
+            xlist.append(xlist_atmoment[min_index])
+            ylist.append(ylist_atmoment[min_index])
+            llist.append(start_label)
 
         llist = np.array(llist)
-        left = (np.array(xlist)[np.where(llist == -1)],
-                np.array(ylist)[np.where(llist == -1)])
-        straight = (np.array(xlist)[np.where(llist == 0)],
-                    np.array(ylist)[np.where(llist == 0)])
-        right = (np.array(xlist)[np.where(llist == 1)],
-                 np.array(ylist)[np.where(llist == 1)])
+        left = (np.array(xlist)[np.where(llist == Label.begin_left_lanechange)],
+                np.array(ylist)[np.where(llist == Label.begin_left_lanechange)])
+        straight = (np.array(xlist)[np.where(llist == Label.go_straight)],
+                    np.array(ylist)[np.where(llist == Label.go_straight)])
+        brake = (np.array(xlist)[np.where(llist == Label.braking_and_go_straight)],
+                    np.array(ylist)[np.where(llist == Label.braking_and_go_straight)])
+        right = (np.array(xlist)[np.where(llist == Label.begin_right_lanechange)],
+                 np.array(ylist)[np.where(llist == Label.begin_right_lanechange)])
         alpha = 0.50
         edgecolor = 'none'
 
 
         # 暫定
-        plt.clf()
-        tmp1 = []
-        tmp2 = []
-        tmp1.extend(right[0])
-        tmp1.extend(left[0])
-        tmp2.extend(right[1])
-        tmp2.extend(left[1])
-        radiuses = np.arange(0, 12, 0.1)
-        print(tmp1)
-        print(tmp2)
-        plt.scatter(radiuses, [percentile(tmp1, tmp2, radius) for radius in radiuses],
-                   color='#2FCDB4',alpha=alpha, edgecolor=edgecolor)
-
-        plt.legend(scatterpoints=10)
-
-        self.makeprojectdir("data")
-        plt.xlabel("Radius")
-        plt.ylabel("Percentile")
-        plt.savefig(os.path.join(self.__class__.REPOSITORY_DIR,
-                                "graph",
-                                "graph_of_{0}_and_{1}.png".format("Radius", "Percentile")
-                                 )
-                   )
-        plt.clf()
+        # plt.clf()
+        # tmp1 = []
+        # tmp2 = []
+        # tmp1.extend(right[0])
+        # tmp1.extend(left[0])
+        # tmp2.extend(right[1])
+        # tmp2.extend(left[1])
+        # radiuses = np.arange(0, 12, 0.1)
+        # print(tmp1)
+        # print(tmp2)
+        # plt.scatter(radiuses, [percentile(tmp1, tmp2, radius) for radius in radiuses],
+        #            color='#2FCDB4',alpha=alpha, edgecolor=edgecolor)
+        #
+        # plt.legend(scatterpoints=10)
+        #
+        # self.makeprojectdir("data")
+        # plt.xlabel("Radius")
+        # plt.ylabel("Percentile")
+        # plt.savefig(os.path.join(self.__class__.REPOSITORY_DIR,
+        #                         "graph",
+        #                         "graph_of_{0}_and_{1}.png".format("Radius", "Percentile")
+        #                          )
+        #            )
+        # plt.clf()
         # 暫定ここまで
 
-        plt.scatter(*straight, color='#B122B2', alpha=alpha,
+        plt.scatter(*straight, color='#FF5A56', alpha=alpha,
                     edgecolor=edgecolor, label="Straight")
-        plt.scatter(*right, color='#2FCDB4', alpha=alpha,
+        plt.scatter(*brake, color='#CCB947', alpha=alpha,
+                    edgecolor=edgecolor, label="Brake")
+        plt.scatter(*right, color='#5E6AFF', alpha=alpha,
                     edgecolor=edgecolor, label="Right_LC")
-        plt.scatter(*left, color='#FBA848', alpha=alpha,
+        plt.scatter(*left, color='#3F993E', alpha=alpha,
                     edgecolor=edgecolor, label="Left_LC")
+
+        # CC 紫 #B122B2 #2FCDB4 水色 #FBA848 オレンジ
 
         # 円を描くとき
         # plt.Circle((0, 0), radius=3, alpha=0)
@@ -416,9 +425,9 @@ class Container:
         # plt.title("{0} and {1}".format(feature1.value, feature2.value))
         plt.xlim(*xlim)
         plt.ylim(*ylim)
-        plt.xlabel("{0}[{1}]".format(feature1.name, feature1.unit))
-        plt.ylabel("{0}[{1}]".format(feature2.name, feature2.unit))
-        self.makeprojectdir("data")
+        plt.xlabel("{0}[{1}]".format(feature1.name, feature1.unit()))
+        plt.ylabel("{0}[{1}]".format(feature2.name, feature2.unit()))
+        self.makeprojectdir("graph")
         plt.savefig(os.path.join(self.__class__.REPOSITORY_DIR,
                                  "graph",
                                  "graph_of_{0}_and_{1}.png".format(feature1.value, feature2.value)
@@ -476,7 +485,7 @@ class Container:
         
         # 暫定的にlabelを変更する策に出る
         for name, data_dict in zip(pb.single_generator(self.behaviornames), self.data_dicts):
-            label_dict[name] = dividelabelwithbrake(data_dict['roa'], data_dict['drv'][:,0],threshold=1)
+            label_dict[name] = dividelabelwithbrake(data_dict['roa'], data_dict['drv'][:,0],threshold=5)
         return label_dict
     # def label_sequence(self):
     #     '''
@@ -607,16 +616,26 @@ class Container:
                                     encoding='shift-jis', header=0,
                                     names=['time', 'brake', 'gas', 'vel', 'steer', 'accX', 'accY', 'accZ', 'NaN'], dtype='float16')
                 drvDF = drvDF.drop(['time', 'NaN'], axis=1)
-                # drvDF = drvDF.fillna(method='ffill')#暫定処置。
                 roaDF = pd.read_csv(os.path.join(DATA_PATH_6000, subject, task, subject +
                                                  task + '-HostV_RoadInfo.csv'), encoding='shift-jis', header=0, dtype={'LC':'int8'})
                 roaDF = roaDF['LC']
                 surDF = pd.read_csv(os.path.join(DATA_PATH_6000, subject, task, subject +
                                                  task + '-SurVehicleInfo.csv'), encoding='shift-jis', header=0, dtype='float16')
+
+                # def rangeindex(self):
+                #     return self.set_index([list(range(self.shape[0]))])
+                #
+                # pd.DataFrame.rangeindex = rangeindex
+                #
+                # dataDF = pd.concat([drvDF, roaDF, surDF], axis=1).dropna()
+                # dataDF = dataDF.rangeindex()
+
+                # print(dataDF.shape)
+                # print(np.where(dataDF.isnull().any(axis=1)))
+
                 dataDict = {'drv': drvDF.as_matrix(
                 ), 'roa': roaDF.as_matrix(), 'sur': surDF.as_matrix()}
                 dataDicts.append(dataDict)
-            #pandastameshi
             bar.display_progressbar(i)
         return dataDicts
 
@@ -670,6 +689,8 @@ class Container:
             drv = dataDict['drv']
             roa = dataDict['roa']
             sur = dataDict['sur']
+            # debug print
+            print(drv.shape[0], roa.shape[0], sur.shape[0])
 
             min_size = min(drv.shape[0], roa.shape[0], sur.shape[0])
             diffs = (min_size - drv.shape[0], min_size -
