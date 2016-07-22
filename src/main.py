@@ -164,6 +164,7 @@ class Features(Enum):
     TimeToCollisionY = "ttcy"
     Distance = "dist"
     Degree = "deg"
+    Label = "label"
 
     def unit(self):
         if 'Time' in self.name:
@@ -286,56 +287,52 @@ class Container:
             result_list.extend(sequence[name])
         return result_list
 
-    def show_plot(self, feature1, feature2, xlim = (-12, 12), ylim=(-12, 12),  load=False):
-        """
-        特徴量を二次元でグラフにプロットする。
-        :param feature1: 
-        :param feature2: 
-        :param xlim: 
-        :param ylim: 
-        :param load: 
-        :return: 
-        """
-        def save_features_and_labels():
+    def feature_with_frames(self, feature, load=False):
+        def save_feature():
             def savetotmp(item, name):
                 self.makeprojectdir('tmp')
                 np.savez_compressed(os.path.join(self.__class__.REPOSITORY_DIR,
-                                      "tmp",
-                                      "{0}.npz".format(name)
+                                                 "tmp",
+                                                 "{0}.npz".format(name)
                                                  ),
-                         item=item,
-                         )
-            print("tmpフォルダに特徴とラベルを保存しています。")
-            savetotmp(x_dict, feature1.value)
-            savetotmp(y_dict, feature2.value)
-            savetotmp(label_dict, "label")
+                                    item=item,
+                                    )
+
+            print("tmpフォルダに{}を保存しています。".format(feature.value))
+            savetotmp(feature_dict, feature.value)
             print("保存完了しました。")
 
-        def load_features_and_labels():
+        def load_feature():
             def loadz(name):
-                return np.load(os.path.join(self.__class__.REPOSITORY_DIR, "tmp", "{0}.npz".format(name)))["item"].tolist()
-            
-            return loadz(feature1.value), loadz(feature2.value), loadz("label")
+                return np.load(os.path.join(self.__class__.REPOSITORY_DIR, "tmp", "{0}.npz".format(name)))[
+                    "item"].tolist()
+
+            return loadz(feature.value)
 
         if load:
             print("ロード中です。")
-            x_dict, y_dict, label_dict = load_features_and_labels()
+            feature_dict = load_feature()
             print("ロード完了しました。")
         else:
-            x_dict, y_dict, label_dict = *self.feature_subjectdict(feature1, feature2), self.label_subjectdict_brakefiltered()
-            # x_dict, y_dict, label_dict = load_features_and_labels()
-            # label_dict = self.label_subjectdict_brakefiltered()
-            save_features_and_labels()
+            feature_dict = self.feature_subjectdict(feature)
+            # self.label_subjectdict_brakefiltered()
+            save_feature()
+        print(len(feature_dict))
+        featurelist_2dim = self.concat_all_behavior(feature_dict)
 
-        xlist_2dim = self.concat_all_behavior(x_dict)
-        ylist_2dim = self.concat_all_behavior(y_dict)
-        label = self.concat_all_behavior(label_dict)
+        if feature.value == "label":
+            b = start_index(featurelist_2dim)
+            c = list(b[0])
+            c.extend(b[1])
+            featurelist_2dim = [a if not (a == 1 or a == -1) or i in c else a * 2 for i, a in enumerate(featurelist_2dim)]
 
-        b = start_index(label)
-        c = list(b[0])
-        ddd = label[len(label) - 299:]
-        c.extend(b[1])
-        start_labels = [a if not (a == 1 or a == -1) or i in c else a*2 for i, a in enumerate(label)]
+        return featurelist_2dim
+
+    def count_feature_in_circle(self, feature1, feature2, load=False):
+
+        xlist_2dim = self.feature_with_frames(feature1, True)
+        ylist_2dim = self.feature_with_frames(feature2, True)
+        start_labels = self.feature_with_frames(Features.Label, load)
 
         xlist = []
         ylist = []
@@ -351,19 +348,123 @@ class Container:
         #     llist.extend(list(np.ones(length_atmoment)*start_label))
 
         # 最近傍ver
-        # # code clone そもそもDistで車を区切るのなんてここでやることじゃない。
-        # def loadz(name):
-        #     return np.load(os.path.join(self.__class__.REPOSITORY_DIR, "tmp", "{0}.npz".format(name)))["item"].tolist()
-        # dist_2dim = self.concat_all_behavior(loadz(Features.Distance.value))
-        # for xlist_atmoment, ylist_atmoment, dist_atmoment, start_label in zip(xlist_2dim, ylist_2dim, dist_2dim, start_labels):
-        #     if len(xlist_atmoment) == 0:
-        #         continue
-        #     min_index = np.argmin(np.array(dist_atmoment))
-        #     xlist.append(xlist_atmoment[min_index])
-        #     ylist.append(ylist_atmoment[min_index])
-        #     llist.append(start_label)
-        # print(len(llist))
-        # print(len(xlist))
+        # code clone そもそもDistで車を区切るのなんてここでやることじゃない。
+        def loadz(name):
+            return np.load(os.path.join(self.__class__.REPOSITORY_DIR, "tmp", "{0}.npz".format(name)))["item"].tolist()
+
+        dist_2dim = self.concat_all_behavior(loadz(Features.Distance.value))
+        for xlist_atmoment, ylist_atmoment, dist_atmoment, start_label in zip(xlist_2dim, ylist_2dim, dist_2dim,
+                                                                              start_labels):
+            if len(xlist_atmoment) == 0:
+                continue
+            min_index = np.argmin(np.array(dist_atmoment))
+            xlist.append(xlist_atmoment[min_index])
+            ylist.append(ylist_atmoment[min_index])
+            llist.append(start_label)
+
+        llist = np.array(llist)
+        left = (np.array(xlist)[np.where(llist == Label.begin_left_lanechange)],
+                np.array(ylist)[np.where(llist == Label.begin_left_lanechange)])
+        straight = (np.array(xlist)[np.where(llist == Label.go_straight)],
+                    np.array(ylist)[np.where(llist == Label.go_straight)])
+        brake = (np.array(xlist)[np.where(llist == Label.braking_and_go_straight)],
+                 np.array(ylist)[np.where(llist == Label.braking_and_go_straight)])
+        right = (np.array(xlist)[np.where(llist == Label.begin_right_lanechange)],
+                 np.array(ylist)[np.where(llist == Label.begin_right_lanechange)])
+
+        l = np.array([np.linalg.norm((onecar[0], onecar[1])) for onecar in np.array(left).T])
+        r = np.array([np.linalg.norm((onecar[0], onecar[1])) for onecar in np.array(right).T])
+        s = np.array([np.linalg.norm((onecar[0], onecar[1])) for onecar in np.array(straight).T])
+        b = np.array([np.linalg.norm((onecar[0], onecar[1])) for onecar in np.array(brake).T])
+
+        llist = []
+        rlist = []
+        slist = []
+        blist = []
+
+        for ra in np.arange(0,15,0.1):
+            # print(len(l))
+            # print(len(r))
+            # print(len(s))
+            # print(len(b))
+            # print(len(np.where(l < ra)[0]))
+            # print(len(np.where(r < ra)[0]))
+            # print(len(np.where(s < ra)[0]))
+            # print(len(np.where(b < ra)[0]))
+            ra
+            ra
+            ra
+            ra
+            llist.append(len(np.where(l < ra)[0])/len(l))
+            rlist.append(len(np.where(r < ra)[0])/len(r))
+            slist.append(len(np.where(s < ra)[0])/len(s))
+            blist.append(len(np.where(b < ra)[0])/len(b))
+
+        alpha = 0.5
+        edgecolor = 'none'
+
+        plt.scatter(np.arange(0,15,0.1),llist, color='#FF5A56', alpha=alpha,
+                    edgecolor=edgecolor, label="l", linestyle = 'solid', linewidth = 1.0, marker = 'o')
+        plt.scatter(np.arange(0,15,0.1),rlist, color='#CCB947', alpha=alpha,
+                    edgecolor=edgecolor, label="r", linestyle = 'solid', linewidth = 1.0, marker = 'o')
+        plt.scatter(np.arange(0,15,0.1),slist, color='#5E6AFF', alpha=alpha,
+                    edgecolor=edgecolor, label="s", linestyle = 'solid', linewidth = 1.0, marker = 'o')
+        plt.scatter(np.arange(0,15,0.1),blist, color='#3F993E', alpha=alpha,
+                    edgecolor=edgecolor, label="b", linestyle = 'solid', linewidth = 1.0, marker = 'o')
+
+        plt.legend(scatterpoints=int(1 / alpha))  # 薄い時にレジェンドが見えるように数を増やす試み 二乗してもいいか？
+
+        # plt.xlabel("{0}[{1}]".format(feature1.name, feature1.unit()))
+        # plt.ylabel("{0}[{1}]".format(feature2.name, feature2.unit()))
+        self.makeprojectdir("graph")
+        plt.savefig(os.path.join(self.__class__.REPOSITORY_DIR,
+                                 "graph",
+                                 "graph_of_{0}_and_{1}.png".format(feature1.value, feature2.value)
+                                 )
+                    )
+        plt.clf()
+
+    def show_plot(self, feature1, feature2, xlim = (-12, 12), ylim=(-12, 12), load=False):
+        """
+        特徴量を二次元でグラフにプロットする。
+        :param feature1: 
+        :param feature2: 
+        :param xlim: 
+        :param ylim: 
+        :param load: 
+        :return: 
+        """
+        xlist_2dim = self.feature_with_frames(feature1, load)
+        ylist_2dim = self.feature_with_frames(feature2, load)
+        start_labels = self.feature_with_frames(Features.Label, load)
+
+        xlist = []
+        ylist = []
+        llist = []
+
+        # 全車両ver
+        # for xlist_atmoment, ylist_atmoment, start_label in zip(xlist_2dim, ylist_2dim, start_label):
+        #     length_atmoment = len(xlist_atmoment)
+        #     if length_atmoment != len(ylist_atmoment):
+        #         print("ひとつ目の特徴とふたつ目の特徴において、特定フレームにおけるサイズの差異が検知されました。なんかおかしいです。")
+        #     xlist.extend(xlist_atmoment)
+        #     ylist.extend(ylist_atmoment)
+        #     llist.extend(list(np.ones(length_atmoment)*start_label))
+
+        # 最近傍ver
+        # code clone そもそもDistで車を区切るのなんてここでやることじゃない。
+        def loadz(name):
+            return np.load(os.path.join(self.__class__.REPOSITORY_DIR, "tmp", "{0}.npz".format(name)))["item"].tolist()
+        dist_2dim = self.concat_all_behavior(loadz(Features.Distance.value))
+        for xlist_atmoment, ylist_atmoment, dist_atmoment, start_label in zip(xlist_2dim, ylist_2dim, dist_2dim, start_labels):
+            if len(xlist_atmoment) == 0:
+                continue
+            min_index = np.argmin(np.array(dist_atmoment))
+            xlist.append(xlist_atmoment[min_index])
+            ylist.append(ylist_atmoment[min_index])
+            llist.append(start_label)
+        print(len(llist))
+        print(len(xlist))
 
         llist = np.array(llist)
         left = (np.array(xlist)[np.where(llist == Label.begin_left_lanechange)],
@@ -478,17 +579,19 @@ class Container:
 
 
     def label_subjectdict_brakefiltered(self):
+        print("deprecated")
         '''
         オリジナルのラベルデータから、被験者名ごとの辞書にして渡す。
         :return: ？？？
         '''
         # data_dictsのデータ構造を被験者ごとにしたい感じはある。
         label_dict = {}
-        
+
         # 暫定的にlabelを変更する策に出る
         for name, data_dict in zip(pb.single_generator(self.behaviornames), self.data_dicts):
-            label_dict[name] = dividelabelwithbrake(data_dict['roa'], data_dict['drv'][:,0],threshold=5)
+            label_dict[name] = dividelabelwithbrake(data_dict['roa'], data_dict['drv'][:, 0], threshold=5)
         return label_dict
+
     # def label_sequence(self):
     #     '''
     #     オリジナルのラベルデータから、被験者名ごとの辞書にして渡す。
@@ -501,6 +604,24 @@ class Container:
     #         label_dict[name] = data_dict['roa']
     #     return label_dict
 
+    def toaccel(self, data_dict):
+        sur = data_dict['sur']
+
+        l = []
+        for i in range(len(sur)):
+            if i == 0:
+                m = []
+                for j in range(int(len(sur[0]) / 4)):
+                    m.append([*sur[0][j * 4:j * 4 + 4], 0, 0])
+                l.append(m)
+            else:
+                m = []
+                for j in range(int(len(sur[0]) / 4)):
+                    m.append([*sur[i][j * 4:j * 4 + 4], sur[i][4 * j + 2] - sur[i - 1][4 * j + 2],
+                              sur[i][4 * j + 3] - sur[i - 1][4 * j + 3]])
+                l.append(m)
+        return l
+
     def feature_subjectdict(self, *features):
         """
         データ構造
@@ -512,7 +633,8 @@ class Container:
 
         def feature_list_from_data_dict(feature, data_dict):
             feature_list = []
-            for sur_at_moment, lc_at_moment in zip(data_dict['sur'], data_dict['roa']):
+            sur = self.toaccel(data_dict)
+            for sur_at_moment, lc_at_moment in zip(sur, data_dict['roa']):
                 feature_at_moment = []
                 for car in self.get_cars(sur_at_moment):
                     feature_at_moment.append(self.calc_feature_from_car(car, feature))
@@ -522,10 +644,19 @@ class Container:
         feature_dicts = []
         for feature in features:
             feature_dict = {}
-            for data_dict, subjectName in zip(pb.single_generator(self.data_dicts), self.behaviornames):
-                feature_dict[subjectName] = feature_list_from_data_dict(feature, data_dict)
+            if feature.value == "label":
+                # 暫定的にlabelを変更する策に出る
+                for name, data_dict in zip(pb.single_generator(self.behaviornames), self.data_dicts):
+                    feature_dict[name] = dividelabelwithbrake(data_dict['roa'], data_dict['drv'][:, 0], threshold=5)
+            else:
+                for data_dict, subjectName in zip(pb.single_generator(self.data_dicts), self.behaviornames):
+                    feature_dict[subjectName] = feature_list_from_data_dict(feature, data_dict)
+
             feature_dicts.append(feature_dict)
-        return feature_dicts
+        if len(feature_dicts) == 1:
+            return feature_dicts[0]
+        else:
+            return feature_dicts
 
 
     def calc_feature_from_car(self, car, feature):
@@ -533,6 +664,15 @@ class Container:
         y = car[1]
         vx = car[2]
         vy = car[3]
+        ax = car[4]
+        ay = car[5]
+
+        def solve_quad(a, b, c):
+            if a == 0:
+                return - b / c, - b / c
+            else :
+                return (-b + math.sqrt(pow(b, 2) - 4 * a * c)) / 2 / a, (-b - math.sqrt(pow(b, 2) - 4 * a * c)) / 2 / a
+
 
         if feature.value == 'ttcp':
             if vx == 0 and vy == 0:
@@ -545,15 +685,23 @@ class Container:
             else:
                 return abs(x * vy - y * vx) / math.sqrt(vx ** 2 + vy ** 2)
         elif feature.value == "ttcx":
-            if np.isnan((x - self.WIDTH_OF_CARS * np.sign(x)) * 1000 / vx / 3600):
+            try:
+                sols = solve_quad(1/2*ax, vx, (x - self.WIDTH_OF_CARS * np.sign(x)))
+                if sols[0] > 0 and sols[1] > 0:
+                    return min(sols)* 1000 / 3600
+                else:
+                    return max(sols)* 1000 / 3600
+            except:
                 return float('inf')
-            else:
-                return (x - self.WIDTH_OF_CARS * np.sign(x)) * 1000 / vx / 3600
         elif feature.value == "ttcy":
-            if np.isnan((y - self.LENGTH_OF_CARS * np.sign(y)) * 1000 / vy / 3600):
+            try:
+                sols = solve_quad(1/2*ay, vy, (y - self.WIDTH_OF_CARS * np.sign(y)))
+                if sols[0] > 0 and sols[1] > 0:
+                    return min(sols) * 1000 / 3600
+                else:
+                    return max(sols) * 1000 / 3600
+            except:
                 return float('inf')
-            else:
-                return (y - self.LENGTH_OF_CARS * np.sign(y)) * 1000 / vy / 3600
         elif feature.value == "dist":
             return math.sqrt(x**2 + y**2)
         elif feature.value == "deg":
@@ -887,7 +1035,8 @@ class Container:
         # np.save('ttns.npy', ttns)
 
     def get_cars(self, sur_row):
-        cars = sur_row.reshape(int(sur_row.shape[0] / 4), 4)
+        cars= np.array(sur_row)
+        # cars = sur_row.reshape(int(sur_row.shape[0] / 6), 6)
 
         cars_i = []
         for i, car in enumerate(cars):
