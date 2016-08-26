@@ -7,7 +7,7 @@
 
 # path = os.path.join(os.path.dirname(__file__), '../')
 # sys.path.append(path)
-from main import Container, DataInput
+from lane_changing import Container, DataInput
 
 ctn = Container(DataInput.readFromCSVData)
 

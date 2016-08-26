@@ -29,6 +29,8 @@ class DataInput(Enum):
 # pandasどうしよう。surだけ取り出すってのがめんどくさくなりそう。
 #
 
+
+
 class Dist(IntEnum):
     exFarFront = 0
     farFront = 1
@@ -182,6 +184,29 @@ class Container:
     WIDTH_OF_CARS = 2
     LENGTH_OF_CARS = 4
 
+    @classmethod
+    def two_features_of_specific_label(cls, feature1_list, feature2_list, label_list, label):
+        '''
+        特定のラベルを持つ特徴を抜き出します。
+        :param feature1_list:
+        :param feature2_list:
+        :param label_list:
+        :param label:
+        :return:
+        '''
+        return (np.array(feature1_list)[np.where(label_list == label)],
+                np.array(feature2_list)[np.where(label_list == label)])
+
+    def extract_nearest_car(self, feature_2dim):
+        feature_of_nearest_car = []
+        dist_2dim = self.feature_with_frames(Features.Distance, load=True)
+        for feature_atmoment, dist_atmoment in zip(feature_2dim, dist_2dim):
+            if len(feature_atmoment) == 0:
+                continue
+            min_index = np.argmin(np.array(dist_atmoment))
+            feature_of_nearest_car.append(feature_atmoment[min_index])
+        return feature_of_nearest_car
+
     def makeprojectdir(self, dir):
         os.makedirs(os.path.join(self.__class__.REPOSITORY_DIR, dir), exist_ok=True)
 
@@ -317,7 +342,7 @@ class Container:
             feature_dict = self.feature_subjectdict(feature)
             # self.label_subjectdict_brakefiltered()
             save_feature()
-        print(len(feature_dict))
+        print('特徴の辞書サイズは' + str(len(feature_dict)))
         featurelist_2dim = self.concat_all_behavior(feature_dict)
 
         if feature.value == "label":

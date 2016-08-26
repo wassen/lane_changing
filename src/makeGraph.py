@@ -2,7 +2,7 @@
 import os
 import sys
 # ./makeGraph ttcx ttcy
-from main import Container, DataInput, Features
+from lane_changing import Container, DataInput, Features
 
 args = sys.argv
 # ここのやつ

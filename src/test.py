@@ -1,40 +1,78 @@
 #!/usr/bin/env python
 #import os,sys
-#path = os.path.join(os.path.dirname(__file__), '../')
-#sys.path.append(path)
-#from lane_changing import Container, DataInput
-#
-#print(Container.start_index([1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, -1, -1, 0, 0, 0, -1, 0]))
-#import numpy as np
-#print(np.where(np.array([1,2,1]) == 2))
 
+import numpy as np
+import os, sys
+import lane_changing as lc
+from lane_changing import Container, DataInput, Features, Label
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
-#ctn = Container(DataInput.loadOriginalData)
-# import numpy as np
-# from enum import IntEnum
-# class Label(IntEnum):
-#     left_lanechanging = -2
-#     begin_left_lanechange = -1
-#     go_straight = 0
-#     begin_right_lanechange = 1
-#     right_lanechanging = 2
-#     braking_and_go_straight = 3
-#
-# def dividebrakelabel(label, brake, threshold=0.4):
-#     '''
-#     直進ラベル(0)をブレーキ踏力のしきい値から0と3に分ける
-#     '''
-#     return [Label.braking_and_go_straight.value if b >= threshold and l == Label.go_straight else l for l,b in zip(label, brake)]
-#
-# label = list(map(lambda item : int(item),np.ones(5))) + list(np.zeros(5))
-# brake = [0.1, 0.3, 0.4, 0.5, 0.3]
-# brake = brake * 2
-# print(dividebrakelabel(label, brake, 0.5))
+ctn = Container(DataInput.loadOriginalData)
 
-from main import Container, DataInput
-ctn = Container(DataInput.readFromCSVData)
-print(ctn.twoDimVectors)
+xlist_2dim = ctn.feature_with_frames(Features.TimeToCollisionX, load=True)
+ylist_2dim = ctn.feature_with_frames(Features.TimeToCollisionY, load=True)
+start_labels = ctn.feature_with_frames(Features.Label, load=True)
 
-# print(Container.start_index([1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, -1, -1, 0, 0, 0, -1, 0]))
+xlist = ctn.extract_nearest_car(xlist_2dim)
+ylist = ctn.extract_nearest_car(ylist_2dim)
+llist = start_labels
 
+llist = np.array(llist)
+left = ctn.two_features_of_specific_label(xlist, ylist, llist, Label.begin_left_lanechange)
+straight = ctn.two_features_of_specific_label(xlist, ylist, llist, Label.go_straight)
+brake = ctn.two_features_of_specific_label(xlist, ylist, llist, Label.braking_and_go_straight)
+right = ctn.two_features_of_specific_label(xlist, ylist, llist, Label.begin_right_lanechange)
 
+print(len(left[0]))
+print(len(straight[0]))
+print(len(brake[0]))
+print(len(right[0]))
+
+fig = plt.figure()
+# 2*2に区切った1番めのプロット。221とも表記できる。
+sp1 = fig.add_subplot(2, 2, 1)
+sp2 = fig.add_subplot(2, 2, 2)
+sp3 = fig.add_subplot(2, 2, 3)
+sp4 = fig.add_subplot(2, 2, 4)
+
+left = np.array(left)
+def delete_inf_and_nan(array):
+    return np.delete(array, np.where((array == np.float('inf')) | (np.isnan(array)))[1], 1)
+
+left = delete_inf_and_nan(left)
+straight = delete_inf_and_nan(straight)
+right = delete_inf_and_nan(right)
+brake = delete_inf_and_nan(brake)
+
+xlim = (-0.1, 0.1)
+ylim = (-0.1, 0.1)
+
+normed = False
+
+H1 = sp1.hist2d(*left, bins=[np.linspace(*xlim,61),np.linspace(*ylim,61)], normed=normed)
+H2 = sp2.hist2d(*right, bins=[np.linspace(*xlim,61),np.linspace(*ylim,61)], normed=normed)
+H3 = sp3.hist2d(*straight, bins=[np.linspace(*xlim,61),np.linspace(*ylim,61)], normed=normed)
+H4 = sp4.hist2d(*brake, bins=[np.linspace(*xlim,61),np.linspace(*ylim,61)], normed=normed)
+
+sp1.set_title('1st graph')
+sp2.set_title('2st graph')
+sp3.set_title('3st graph')
+sp4.set_title('4st graph')
+sp1.set_xlabel('x')
+sp2.set_xlabel('x')
+sp3.set_xlabel('x')
+sp4.set_xlabel('x')
+sp1.set_ylabel('y')
+sp2.set_ylabel('y')
+sp3.set_ylabel('y')
+sp4.set_ylabel('y')
+fig.colorbar(H1[3],ax=sp1)
+fig.colorbar(H2[3],ax=sp2)
+fig.colorbar(H3[3],ax=sp3)
+fig.colorbar(H4[3],ax=sp4)
+
+plt.savefig('fig.pdf')
+
+plt.clf()
