@@ -199,13 +199,16 @@ class Container:
 
     def extract_nearest_car(self, feature_2dim):
         feature_of_nearest_car = []
+        # loadの自動判定
+        cont_list = []
         dist_2dim = self.feature_with_frames(Features.Distance, load=True)
-        for feature_atmoment, dist_atmoment in zip(feature_2dim, dist_2dim):
+        for i, (feature_atmoment, dist_atmoment) in enumerate(zip(feature_2dim, dist_2dim)):
             if len(feature_atmoment) == 0:
+                cont_list.append(i)
                 continue
             min_index = np.argmin(np.array(dist_atmoment))
             feature_of_nearest_car.append(feature_atmoment[min_index])
-        return feature_of_nearest_car
+        return feature_of_nearest_car, cont_list
 
     def makeprojectdir(self, dir):
         os.makedirs(os.path.join(self.__class__.REPOSITORY_DIR, dir), exist_ok=True)
@@ -312,7 +315,8 @@ class Container:
             result_list.extend(sequence[name])
         return result_list
 
-    def feature_with_frames(self, feature, load=False):
+    def feature_with_frames(self, feature, load=True):
+        # TODO load=Falseなら強制的にread、load=Trueならあればload、なければ警告文を発してread
         def save_feature():
             def savetotmp(item, name):
                 self.makeprojectdir('tmp')
@@ -683,21 +687,26 @@ class Container:
         else:
             return feature_dicts
 
-
     def calc_feature_from_car(self, car, feature):
-        x = car[0]
-        y = car[1]
-        vx = car[2]
-        vy = car[3]
-        ax = car[4]
-        ay = car[5]
+        x = float(car[0])
+        y = float(car[1])
+        vx = float(car[2])
+        vy = float(car[3])
+        ax = float(car[4])
+        ay = float(car[5])
 
         def solve_quad(a, b, c):
             if a == 0:
-                return - b / c, - b / c
-            else :
+                return - c / b, - c / b
+            else:
                 return (-b + math.sqrt(pow(b, 2) - 4 * a * c)) / 2 / a, (-b - math.sqrt(pow(b, 2) - 4 * a * c)) / 2 / a
 
+        def calc_ttc(x, v, a, car_size):
+            sols = solve_quad(1. / 2. * a, v, (x - car_size * np.sign(x)))
+            if sols[0] > 0 and sols[1] > 0:
+                return min(sols) * 1000. / 3600.
+            else:
+                return max(sols) * 1000. / 3600.
 
         if feature.value == 'ttcp':
             if vx == 0 and vy == 0:
@@ -711,23 +720,13 @@ class Container:
                 return abs(x * vy - y * vx) / math.sqrt(vx ** 2 + vy ** 2)
         elif feature.value == "ttcx":
             try:
-                print(x,y,vx,vy,ax,ay)
-                sols = solve_quad(1/2*ax, vx, (x - self.WIDTH_OF_CARS * np.sign(x)))
-                if sols[0] > 0 and sols[1] > 0:
-                    print(min(sols))
-                    return min(sols)* 1000 / 3600
-                else:
-                    print(min(sols))
-                    return max(sols)* 1000 / 3600
+                return calc_ttc(x, vx, ax, self.WIDTH_OF_CARS)
             except:
+                # TODO ここのinfをより明示的にしたい。0で割ったとか。じゃないと他のバグにきづけない。。
                 return float('inf')
         elif feature.value == "ttcy":
             try:
-                sols = solve_quad(1/2*ay, vy, (y - self.WIDTH_OF_CARS * np.sign(y)))
-                if sols[0] > 0 and sols[1] > 0:
-                    return min(sols) * 1000 / 3600
-                else:
-                    return max(sols) * 1000 / 3600
+                return calc_ttc(y, vy, ay, self.LENGTH_OF_CARS)
             except:
                 return float('inf')
         elif feature.value == "dist":
