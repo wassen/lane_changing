@@ -4,45 +4,70 @@
 import numpy as np
 import cv2
 
-LANE_WIDTH = 3.5 * 60
-CAR_WIDTH = 2 * 60
-CAR_LENGTH = 4 * 60
+def meter2pix(m):
+    return int(m * 60)
 
+
+LANE_WIDTH = meter2pix(3.5)
+CAR_WIDTH = meter2pix(2.)
+CAR_LENGTH = meter2pix(4.)
 CAR_SIZE = np.array([CAR_WIDTH, CAR_LENGTH])
-self_lanes = [1, 1, 2, 2]
-lane_numbers = [2, 2, 2, 2]
-BACK_GROUND = np.zeros((512, LANE_WIDTH * max(lane_numbers), 3), np.uint8)
-rel_x = [3, 3, 4, 4]
-rel_y = [0, 0, 1, 1]
+
+# 何故かRGBではなく、BGRになってるが・・・
+BG_COLOR = (54, 61, 59)
+SELF_COLOR = (38, 166, 91)
+SELF_NEARMISS_COLOR = ()
+SURROUND_COLOR = (239, 144, 96)
+SURROUND_NEARMISS_COLOR = ()
+WHITELINE_COLOR = (220, 220, 220)
+
+
 # 曲率
+# なめらかに車線変更
 
-max(lane_numbers)
+def output_video(self_lanes, lane_numbers, rel_xes_list, rel_ys_list):
+    IMG_HEIGHT = 1024
+    IMG_WIDTH = LANE_WIDTH * max(lane_numbers)
 
-for i, (lane_number, self_lane) in enumerate(zip(lane_numbers, self_lanes)):
+    BACK_GROUND = np.array([[BG_COLOR for _ in range(IMG_WIDTH)] for _ in range(IMG_HEIGHT)], np.uint8)
 
-    max(lane_numbers)
+    fourcc = cv2.cv.CV_FOURCC(*'mp4v')
+    FPS = 10
+    vout = cv2.VideoWriter('output.avi', fourcc, FPS, (IMG_WIDTH, IMG_HEIGHT,))
 
-    img = BACK_GROUND
-    img_height = img.shape[0]
-    img_width = img.shape[1]
-    center = np.array([img_width, img_height])
+    for i, (self_lane, lane_number, rel_xes, rel_ys) in enumerate(
+            zip(self_lanes, lane_numbers, rel_xes_list, rel_ys_list)
+    ):
+        img = np.array(BACK_GROUND)
+        print(i)
 
-    def center_of_car():
-        # return np.array([img_width * (2 * self_lane - 1)/2 * lane_number, img_width / 2])
-        return np.array([img_height / 2, img_width / 2])
+        def center_of_self_car():
+            # 左側に車線が増えることがあればややこしい。というか普通は左側に増えるのか・・・？
+            return np.array([LANE_WIDTH * lane_number * (2. * self_lane - 1.) / (2. * lane_number), IMG_HEIGHT / 2.])
 
-    def draw_self_car(img):
-        cv2.rectangle(img, tuple(center_of_car() / 2 - CAR_SIZE / 2), tuple(center_of_car() / 2 + CAR_SIZE / 2), (255, 0, 0), 5)
+        def draw_self_car(cosec):
+            cv2.rectangle(img, tuple(np.array(cosec + CAR_SIZE / 2., np.uint16)),
+                          tuple(np.array(cosec - CAR_SIZE / 2., np.uint16)), SELF_COLOR, 5)
 
-    draw_self_car(img)
+        def center_of_surrounding_car(cosec, rel_x, rel_y):
+            return cosec + np.array([meter2pix(rel_x), meter2pix(rel_y)])
 
-    # 左上から右下まで、太さ10の赤い線を引く
-    # cv2.line(img, (width/ln, 0), (width/ln, height - 1), (0, 0, 255), 10)
+        def draw_surrounding_car(cosuc):
+            cv2.rectangle(img, tuple(np.array(cosuc + CAR_SIZE / 2., np.uint16)),
+                          tuple(np.array(cosuc - CAR_SIZE / 2., np.uint16)), SURROUND_COLOR, 5)
 
-    # 右上から左下まで、太さ50の青い線を引く
-    for j in range(lane_number - 1):
-        j = j + 1
-        x_pos = img_width / max(lane_numbers) * j
-        cv2.line(img, (x_pos, 0), (x_pos, img_height - 1), (255, 0, 0), 5)
+        cosec = center_of_self_car()
+        draw_self_car(cosec)
 
-    cv2.imwrite("{}.png".format(i), img)
+        for rel_x, rel_y in zip(rel_xes, rel_ys):
+            draw_surrounding_car(center_of_surrounding_car(cosec, rel_x, rel_y))
+
+        for j in range(int(lane_number - 1)):
+            j = j + 1
+            x_pos = IMG_WIDTH / max(lane_numbers) * j
+            cv2.line(img, (x_pos, 0), (x_pos, IMG_HEIGHT - 1), WHITELINE_COLOR, 5)
+
+        def reverse_y_direction(img):
+            return img[::-1]
+
+        vout.write(img)

@@ -775,74 +775,7 @@ class Container:
 # read の段階で単位を揃えたい
     
     # ラベルの段階でroaとかじゃなくて特徴名(LCとか)でアクセスできるようにすればいいんじゃないの？
-    def read_6000(self):
-        DATA_PATH_6000 = self.__class__.DATA_PATH_6000
-        dataDicts = []
 
-        tmpList = sorted(os.listdir(DATA_PATH_6000))
-
-        bar = pb(len(tmpList))
-        print('6000番台読込中')
-
-        for i, subject in enumerate(tmpList):
-            for task in sorted(os.listdir(os.path.join(DATA_PATH_6000, subject))):
-                self.behaviornames.append(subject + task)
-                drvDF = pd.read_csv(os.path.join(DATA_PATH_6000, subject, task, subject + task + '-HostV_DrvInfo.csv'),
-                                    encoding='shift-jis', header=0,
-                                    names=['time', 'brake', 'gas', 'vel', 'steer', 'accX', 'accY', 'accZ', 'NaN'], dtype='float16')
-                drvDF = drvDF.drop(['time', 'NaN'], axis=1)
-                roaDF = pd.read_csv(os.path.join(DATA_PATH_6000, subject, task, subject +
-                                                 task + '-HostV_RoadInfo.csv'), encoding='shift-jis', header=0, dtype={'LC':'int8'})
-                roaDF = roaDF['LC']
-                surDF = pd.read_csv(os.path.join(DATA_PATH_6000, subject, task, subject +
-                                                 task + '-SurVehicleInfo.csv'), encoding='shift-jis', header=0, dtype='float16')
-
-                # def rangeindex(self):
-                #     return self.set_index([list(range(self.shape[0]))])
-                #
-                # pd.DataFrame.rangeindex = rangeindex
-                #
-                # dataDF = pd.concat([drvDF, roaDF, surDF], axis=1).dropna()
-                # dataDF = dataDF.rangeindex()
-
-                # print(dataDF.shape)
-                # print(np.where(dataDF.isnull().any(axis=1)))
-
-                dataDict = {'drv': drvDF.as_matrix(
-                ), 'roa': roaDF.as_matrix(), 'sur': surDF.as_matrix()}
-                dataDicts.append(dataDict)
-            #pandastameshi
-            bar.display_progressbar(i)
-        return dataDicts
-
-    def read_9000(self):
-        DATA_PATH_9000 = self.__class__.DATA_PATH_9000
-        dataDicts = []
-
-        print('9000番台読込中')
-        bar = pb(sorted(os.listdir(DATA_PATH_9000)))
-        for i, item in enumerate(bar.generator(0)):
-            for j, data in enumerate(sorted(os.listdir(os.path.join(DATA_PATH_9000, item)))):
-                print(data)
-                if i == 0:
-                    self.behaviornames.append(data)
-                    drvDF = pd.read_csv(os.path.join(
-                        DATA_PATH_9000, item, data), encoding='shift-jis', header=0, dtype='float16')
-                    drvDF = drvDF.drop(
-                        ['time[sec]', 'lat[deg]', 'lon[deg]'], axis=1)
-                    drvDF = drvDF.dropna()
-                    dataDicts.append({'drv': drvDF.as_matrix()})
-                elif i == 1:
-                    roaDF = pd.read_csv(os.path.join(
-                        DATA_PATH_9000, item, data), encoding='shift-jis', header=0, dtype={'LC':'int8'})
-                    roaDF = roaDF['LC']
-                    dataDicts[j]['roa'] = roaDF.as_matrix()
-                elif i == 2:
-                    surDF = pd.read_csv(os.path.join(
-                        DATA_PATH_9000, item, data), encoding='shift-jis', header=0, dtype='float16')
-                    dataDicts[j]['sur'] = surDF.as_matrix()
-
-        return dataDicts
 
     def save_dataDicts(self):
         self.makeprojectdir("data")
