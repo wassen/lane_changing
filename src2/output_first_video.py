@@ -10,6 +10,7 @@ import driving_data as dd
 lane_numbers = dd.d6000[0]['roa']['LN']
 self_lanes = dd.d6000[0]['roa']['host_#L']
 sur = dd.d6000[0]['sur']
+# print(dd.behavior_names6000)
 
 # TODO selflaneのNULLを何とかする。dropじゃあ動画っぽくなくなるし、前後の補完でいいだろう。
 
