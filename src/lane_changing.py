@@ -711,10 +711,13 @@ class Container:
                 return abs(x * vy - y * vx) / math.sqrt(vx ** 2 + vy ** 2)
         elif feature.value == "ttcx":
             try:
+                print(x,y,vx,vy,ax,ay)
                 sols = solve_quad(1/2*ax, vx, (x - self.WIDTH_OF_CARS * np.sign(x)))
                 if sols[0] > 0 and sols[1] > 0:
+                    print(min(sols))
                     return min(sols)* 1000 / 3600
                 else:
+                    print(min(sols))
                     return max(sols)* 1000 / 3600
             except:
                 return float('inf')

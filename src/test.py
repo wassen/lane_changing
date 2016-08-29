@@ -11,9 +11,10 @@ import matplotlib.pyplot as plt
 
 ctn = Container(DataInput.loadOriginalData)
 
-xlist_2dim = ctn.feature_with_frames(Features.TimeToCollisionX, load=True)
-ylist_2dim = ctn.feature_with_frames(Features.TimeToCollisionY, load=True)
-start_labels = ctn.feature_with_frames(Features.Label, load=True)
+load=False
+xlist_2dim = ctn.feature_with_frames(Features.TimeToCollisionX, load=load)
+ylist_2dim = ctn.feature_with_frames(Features.TimeToCollisionY, load=load)
+start_labels = ctn.feature_with_frames(Features.Label, load=load)
 
 xlist = ctn.extract_nearest_car(xlist_2dim)
 ylist = ctn.extract_nearest_car(ylist_2dim)
