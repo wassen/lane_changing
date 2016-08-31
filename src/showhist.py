@@ -10,13 +10,23 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
+
+def report(purpose, line, overwrite=False):
+    report_file = open("{}_report.txt".format(purpose),'w' if overwrite else 'a')
+    report_file.write(line)
+    report_file.close()
+
+
+feature1 = Features.TimeToCollisionX
+feature2 = Features.TimeToCollisionY
+
 # ctn = Container(DataInput.readFromCSVData)
 ctn = Container(ContainerInitializer.loadOriginalData)
 
 load = True
-xlist_2dim = ctn.feature_with_frames(Features.TimeToCollisionX, load=load)
-ylist_2dim = ctn.feature_with_frames(Features.TimeToCollisionY, load=load)
-start_labels = ctn.feature_with_frames(Features.Label, load=load)
+xlist_2dim = ctn.feature_with_frames(feature1, load=load)
+ylist_2dim = ctn.feature_with_frames(feature2, load=load)
+start_labels = ctn.feature_with_frames(Features.Label, load=False)
 
 xlist, delete_index = ctn.extract_nearest_car(xlist_2dim)
 ylist, delete_index = ctn.extract_nearest_car(ylist_2dim)
@@ -28,20 +38,14 @@ straight = ctn.two_features_of_specific_label(xlist, ylist, llist, Label.go_stra
 brake = ctn.two_features_of_specific_label(xlist, ylist, llist, Label.braking_and_go_straight)
 right = ctn.two_features_of_specific_label(xlist, ylist, llist, Label.begin_right_lanechange)
 
-print(len(left[0]))
-print(len(straight[0]))
-print(len(brake[0]))
-print(len(right[0]))
+report("showhist",
+       "左車線変更{0}回, 右車線変更{1}回, 直進{2}フレーム, ブレーキ{3}フレーム".format(len(left[0]),
+                                                             len(right[0]),
+                                                             len(straight[0]),
+                                                             len(brake[0])),
+       True)
 
-fig = plt.figure()
-# 2*2に区切った1番めのプロット。221とも表記できる。
-sp1 = fig.add_subplot(2, 2, 1)
-sp2 = fig.add_subplot(2, 2, 2)
-sp3 = fig.add_subplot(2, 2, 3)
-sp4 = fig.add_subplot(2, 2, 4)
-fig.subplots_adjust(hspace=0.3)
-
-left = np.array(left)
+# left = np.array(left)
 
 
 def delete_inf_and_nan(array):
@@ -56,34 +60,26 @@ brake = delete_inf_and_nan(brake)
 xlim = (-5, 5)
 ylim = (-5, 5)
 
-normed = False
+labels = [left, right, straight, brake]
+graph_title = ['start_of_left_lane_changing', 'start_of_right_lane_changing', 'go_straight', 'braking']
 
-# labels = [left, right, straight, brake]
-#
-# for label in labels:
-#
-H1 = sp1.hist2d(*left, bins=[np.linspace(*xlim, 61), np.linspace(*ylim, 61)], normed=normed)
-H2 = sp2.hist2d(*right, bins=[np.linspace(*xlim, 61), np.linspace(*ylim, 61)], normed=normed)
-H3 = sp3.hist2d(*straight, bins=[np.linspace(*xlim, 61), np.linspace(*ylim, 61)], normed=normed)
-H4 = sp4.hist2d(*brake, bins=[np.linspace(*xlim, 61), np.linspace(*ylim, 61)], normed=normed)
+fig = plt.figure()
 
-sp1.set_title('1st graph')
-sp2.set_title('2st graph')
-sp3.set_title('3st graph')
-sp4.set_title('4st graph')
-sp1.set_xlabel('x', y=-0.2)
-sp2.set_xlabel('x', y=-0.2)
-sp3.set_xlabel('x', y=-0.2)
-sp4.set_xlabel('x', y=-0.2)
-sp1.set_ylabel('y', x=0.2)
-sp2.set_ylabel('y', x=0.2)
-sp3.set_ylabel('y', x=0.2)
-sp4.set_ylabel('y', x=0.2)
-fig.colorbar(H1[3], ax=sp1)
-fig.colorbar(H2[3], ax=sp2)
-fig.colorbar(H3[3], ax=sp3)
-fig.colorbar(H4[3], ax=sp4)
+# label数は4固定
+for i, (label, graph_title) in enumerate(zip(labels, graph_title)):
+    # 2*2に区切ったi番めのプロット。変数がないなら221とかでも表記できる。
 
-plt.savefig('fig.pdf')
+    sp_i = fig.add_subplot(2, 2, i + 1)
+
+    normed = False
+    H = sp_i.hist2d(*label, bins=[np.linspace(*xlim, 61), np.linspace(*ylim, 61)], normed=normed)
+
+    sp_i.set_title(graph_title)
+    sp_i.set_xlabel(feature1.name)
+    sp_i.set_ylabel(feature2.name)
+    fig.colorbar(H[3], ax=sp_i)
+
+fig.subplots_adjust(wspace=0.3, hspace=0.6)
+plt.savefig('fig.png')
 
 plt.clf()

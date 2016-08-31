@@ -64,6 +64,7 @@ class Label(IntEnum):
     begin_right_lanechange = 1
     right_lanechanging = 2
     braking_and_go_straight = 3
+    gas_and_go_straight = 3
 
 
 def dividelabelwithbrake(label, brake, threshold=5):
@@ -350,7 +351,12 @@ class Container:
             feature_dict = when_not_load()
 
         print('特徴の辞書サイズは' + str(len(feature_dict)))
+
+        # TODO 暫定
+        # all behavior
         featurelist_2dim = self.concat_all_behavior(feature_dict)
+        # single behavir
+        # featurelist_2dim = feature_dict[self.behaviornames[0]]
 
         if feature.value == "label":
             b = start_index(featurelist_2dim)
@@ -661,7 +667,7 @@ class Container:
         ある瞬間の周辺車に対する特徴
         in 各フレームの値
         in 運転行動の被験者名がkeyの辞書
-        in 特徴数分の配列
+        in 引数の特徴数分の配列
         """
 
         def feature_list_from_data_dict(feature, data_dict):
@@ -678,7 +684,7 @@ class Container:
         for feature in features:
             feature_dict = {}
             if feature.value == "label":
-                # 暫定的にlabelを変更する策に出る
+                # TODO 暫定的にlabelを変更する策に出る
                 for name, data_dict in zip(pb.single_generator(self.behaviornames), self.data_dicts):
                     feature_dict[name] = dividelabelwithbrake(data_dict['roa'], data_dict['drv'][:, 0], threshold=5)
             else:
