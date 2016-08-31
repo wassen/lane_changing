@@ -7,9 +7,9 @@
 
 # path = os.path.join(os.path.dirname(__file__), '../')
 # sys.path.append(path)
-from lane_changing import Container, DataInput
+from lane_changing import Container, ContainerInitializer
 
-ctn = Container(DataInput.readFromCSVData)
+ctn = Container(ContainerInitializer.readFromCSVData)
 
 ctn.adjust_size()
 ctn.save_dataDicts()

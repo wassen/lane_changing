@@ -12,12 +12,13 @@ import sys
 import math
 import pandas as pd
 from sympy import *
+import repo_env
 
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 
-class DataInput(Enum):
+class ContainerInitializer(Enum):
     loadVectorData = 'vector'
     loadOriginalData = 'origin'
     readFromCSVData = 'read'
@@ -69,7 +70,8 @@ def dividelabelwithbrake(label, brake, threshold=5):
     '''
     直進ラベル(0)をブレーキ踏力のしきい値から0と3に分ける
     '''
-    return [Label.braking_and_go_straight.value if b >= threshold and l == Label.go_straight else l for l,b in zip(label, brake)]
+    return [Label.braking_and_go_straight.value if b >= threshold and l == Label.go_straight else l for l, b in
+            zip(label, brake)]
 
 
 class NeighborBlock:
@@ -131,14 +133,15 @@ class NeighborBlock:
     def get_list_atan(self):
         return [math.atan(feature) for feature in self.featureList.reshape(27)]
 
+
 # メソッドを呼ぶ順番を考えなきゃいけないクラスってどうなん？
 
 def percentile(list1, list2, radius):
     dist = [np.linalg.norm([l1, l2]) for l1, l2 in zip(list1, list2)]
-    return sum(np.array(dist) < radius)/len(dist)*100
+    return sum(np.array(dist) < radius) / len(dist) * 100
+
 
 def start_index(label):
-
     label = np.array(label)
     labelLists = []
     rLcLabel = list(np.where(label == 1)[0])
@@ -158,6 +161,7 @@ def start_index(label):
         previous = l
     return np.delete(rLcLabel, rDelList), np.delete(lLcLabel, lDelList)
 
+
 class Features(Enum):
     # note:name = value
     TimeToClosestPoint = "ttcp"
@@ -175,6 +179,7 @@ class Features(Enum):
             return 'm'
         elif self.name == "Degree":
             return 'deg'
+
 
 class Container:
     REPOSITORY_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../'))
@@ -211,7 +216,7 @@ class Container:
         return feature_of_nearest_car, cont_list
 
     def makeprojectdir(self, dir):
-        os.makedirs(os.path.join(self.__class__.REPOSITORY_DIR, dir), exist_ok=True)
+        os.makedirs(os.path.join(repo_env.REPOSITORY_DIR, dir), exist_ok=True)
 
     def get_before_and_after_LC_label(label, before=100, after=100):
 
@@ -279,7 +284,7 @@ class Container:
         self.makeprojectdir("graph")
         plt.xlabel("Value")
         plt.ylabel(nameOfFeature)
-        plt.savefig(os.path.join(self.__class__.REPOSITORY_DIR, 'graph',nameOfFeature + "_r" + '.pdf'))
+        plt.savefig(os.path.join(self.__class__.REPOSITORY_DIR, 'graph', nameOfFeature + "_r" + '.pdf'))
         plt.clf()
 
         plt.legend()
@@ -316,36 +321,34 @@ class Container:
         return result_list
 
     def feature_with_frames(self, feature, load=True):
-        # TODO load=Falseなら強制的にread、load=Trueならあればload、なければ警告文を発してread
-        def save_feature():
-            def savetotmp(item, name):
-                self.makeprojectdir('tmp')
-                np.savez_compressed(os.path.join(self.__class__.REPOSITORY_DIR,
-                                                 "tmp",
-                                                 "{0}.npz".format(name)
-                                                 ),
-                                    item=item,
-                                    )
+        npz_dir = os.path.join(repo_env.TMP_DIR, "{}.npz".format(feature.name))
 
-            print("tmpフォルダに{}を保存しています。".format(feature.value))
-            savetotmp(feature_dict, feature.value)
+        def save_feature_dict(feature_dict):
+            name = feature.value
+            self.makeprojectdir('tmp')
+            print("tmpフォルダに{}を保存しています。".format(name))
+            np.savez_compressed(npz_dir, item=feature_dict)
             print("保存完了しました。")
 
-        def load_feature():
-            def loadz(name):
-                return np.load(os.path.join(self.__class__.REPOSITORY_DIR, "tmp", "{0}.npz".format(name)))[
-                    "item"].tolist()
-
-            return loadz(feature.value)
-
-        if load:
+        def load_feature_dict():
             print("ロード中です。")
-            feature_dict = load_feature()
+            result = np.load(npz_dir)["item"].tolist()
             print("ロード完了しました。")
-        else:
+            return result
+
+        def when_not_load():
             feature_dict = self.feature_subjectdict(feature)
-            # self.label_subjectdict_brakefiltered()
-            save_feature()
+            save_feature_dict(feature_dict)
+            return feature_dict
+
+        if not load:
+            feature_dict = when_not_load()
+        elif os.path.exists(npz_dir):
+            feature_dict = load_feature_dict()
+        else:
+            print('ファイルが存在しません。特徴を計算し直します。')
+            feature_dict = when_not_load()
+
         print('特徴の辞書サイズは' + str(len(feature_dict)))
         featurelist_2dim = self.concat_all_behavior(feature_dict)
 
@@ -353,7 +356,8 @@ class Container:
             b = start_index(featurelist_2dim)
             c = list(b[0])
             c.extend(b[1])
-            featurelist_2dim = [a if not (a == 1 or a == -1) or i in c else a * 2 for i, a in enumerate(featurelist_2dim)]
+            featurelist_2dim = [a if not (a == 1 or a == -1) or i in c else a * 2 for i, a in
+                                enumerate(featurelist_2dim)]
 
         return featurelist_2dim
 
@@ -411,7 +415,7 @@ class Container:
         slist = []
         blist = []
 
-        for ra in np.arange(0,15,0.1):
+        for ra in np.arange(0, 15, 0.1):
             # print(len(l))
             # print(len(r))
             # print(len(s))
@@ -424,22 +428,22 @@ class Container:
             ra
             ra
             ra
-            llist.append(len(np.where(l < ra)[0])/len(l))
-            rlist.append(len(np.where(r < ra)[0])/len(r))
-            slist.append(len(np.where(s < ra)[0])/len(s))
-            blist.append(len(np.where(b < ra)[0])/len(b))
+            llist.append(len(np.where(l < ra)[0]) / len(l))
+            rlist.append(len(np.where(r < ra)[0]) / len(r))
+            slist.append(len(np.where(s < ra)[0]) / len(s))
+            blist.append(len(np.where(b < ra)[0]) / len(b))
 
         alpha = 0.5
         edgecolor = 'none'
 
-        plt.scatter(np.arange(0,15,0.1),llist, color='#FF5A56', alpha=alpha,
-                    edgecolor=edgecolor, label="l", linestyle = 'solid', linewidth = 1.0, marker = 'o')
-        plt.scatter(np.arange(0,15,0.1),rlist, color='#CCB947', alpha=alpha,
-                    edgecolor=edgecolor, label="r", linestyle = 'solid', linewidth = 1.0, marker = 'o')
-        plt.scatter(np.arange(0,15,0.1),slist, color='#5E6AFF', alpha=alpha,
-                    edgecolor=edgecolor, label="s", linestyle = 'solid', linewidth = 1.0, marker = 'o')
-        plt.scatter(np.arange(0,15,0.1),blist, color='#3F993E', alpha=alpha,
-                    edgecolor=edgecolor, label="b", linestyle = 'solid', linewidth = 1.0, marker = 'o')
+        plt.scatter(np.arange(0, 15, 0.1), llist, color='#FF5A56', alpha=alpha,
+                    edgecolor=edgecolor, label="l", linestyle='solid', linewidth=1.0, marker='o')
+        plt.scatter(np.arange(0, 15, 0.1), rlist, color='#CCB947', alpha=alpha,
+                    edgecolor=edgecolor, label="r", linestyle='solid', linewidth=1.0, marker='o')
+        plt.scatter(np.arange(0, 15, 0.1), slist, color='#5E6AFF', alpha=alpha,
+                    edgecolor=edgecolor, label="s", linestyle='solid', linewidth=1.0, marker='o')
+        plt.scatter(np.arange(0, 15, 0.1), blist, color='#3F993E', alpha=alpha,
+                    edgecolor=edgecolor, label="b", linestyle='solid', linewidth=1.0, marker='o')
 
         plt.legend(scatterpoints=int(1 / alpha))  # 薄い時にレジェンドが見えるように数を増やす試み 二乗してもいいか？
 
@@ -453,7 +457,7 @@ class Container:
                     )
         plt.clf()
 
-    def show_plot(self, feature1, feature2, xlim = (-12, 12), ylim=(-12, 12), load=False):
+    def show_plot(self, feature1, feature2, xlim=(-12, 12), ylim=(-12, 12), load=False):
         """
         特徴量を二次元でグラフにプロットする。
         :param feature1: 
@@ -484,8 +488,10 @@ class Container:
         # code clone そもそもDistで車を区切るのなんてここでやることじゃない。
         def loadz(name):
             return np.load(os.path.join(self.__class__.REPOSITORY_DIR, "tmp", "{0}.npz".format(name)))["item"].tolist()
+
         dist_2dim = self.concat_all_behavior(loadz(Features.Distance.value))
-        for xlist_atmoment, ylist_atmoment, dist_atmoment, start_label in zip(xlist_2dim, ylist_2dim, dist_2dim, start_labels):
+        for xlist_atmoment, ylist_atmoment, dist_atmoment, start_label in zip(xlist_2dim, ylist_2dim, dist_2dim,
+                                                                              start_labels):
             if len(xlist_atmoment) == 0:
                 continue
             min_index = np.argmin(np.array(dist_atmoment))
@@ -501,12 +507,11 @@ class Container:
         straight = (np.array(xlist)[np.where(llist == Label.go_straight)],
                     np.array(ylist)[np.where(llist == Label.go_straight)])
         brake = (np.array(xlist)[np.where(llist == Label.braking_and_go_straight)],
-                    np.array(ylist)[np.where(llist == Label.braking_and_go_straight)])
+                 np.array(ylist)[np.where(llist == Label.braking_and_go_straight)])
         right = (np.array(xlist)[np.where(llist == Label.begin_right_lanechange)],
                  np.array(ylist)[np.where(llist == Label.begin_right_lanechange)])
         alpha = 0.50
         edgecolor = 'none'
-
 
         # 暫定
         # plt.clf()
@@ -548,11 +553,11 @@ class Container:
 
         # 円を描くとき
         # plt.Circle((0, 0), radius=3, alpha=0)
-        
-        # 車の順番がおかしい
-        #print(right[0], right[1])
 
-        plt.legend(scatterpoints=int(1/alpha))# 薄い時にレジェンドが見えるように数を増やす試み 二乗してもいいか？
+        # 車の順番がおかしい
+        # print(right[0], right[1])
+
+        plt.legend(scatterpoints=int(1 / alpha))  # 薄い時にレジェンドが見えるように数を増やす試み 二乗してもいいか？
 
         # plt.title("{0} and {1}".format(feature1.value, feature2.value))
         plt.xlim(*xlim)
@@ -572,12 +577,12 @@ class Container:
         labels = [lc for dataDict in self.data_dicts for lc in dataDict['roa']]
         sur_rows = [sur_row for sur in [dataDict['sur'] for dataDict in self.data_dicts] for sur_row in sur]
         label_list = []
-        #厳密には、開始と終了が繋がる可能性はあるが、まあないだろう。
+        # 厳密には、開始と終了が繋がる可能性はあるが、まあないだろう。
         # labelのなかで、車線変更開始時点のラベル、または直進ならそのままで、それ以外は-2とか
         b = self.__class__.start_index(labels)
         c = list(b[0])
         c.extend(b[1])
-        labels = [a if a == 0 or i in c else a*2 for i, a in enumerate(labels)]
+        labels = [a if a == 0 or i in c else a * 2 for i, a in enumerate(labels)]
         for label, sur_row in zip(labels, pb.single_generator(sur_rows)):
 
             cars = self.get_cars(sur_row)
@@ -605,7 +610,6 @@ class Container:
             for car in cars:
                 feature_list.append(self.calc_feature_from_car(car, feature))
         return feature_list
-
 
     def label_subjectdict_brakefiltered(self):
         print("deprecated")
@@ -730,54 +734,124 @@ class Container:
             except:
                 return float('inf')
         elif feature.value == "dist":
-            return math.sqrt(x**2 + y**2)
+            return math.sqrt(x ** 2 + y ** 2)
         elif feature.value == "deg":
-            return math.atan2(y, x)/math.pi*180
+            return math.atan2(y, x) / math.pi * 180
 
-    # def show_plot(self, nameOfFeature):
-    #     i = self.featureNames.index(nameOfFeature)
-    #
-    #     flag = True
-    #     for j, (label, someFeature) in enumerate(zip(pb.single_generator(self.oneDimVectors), self.twoDimVectors)):
-    #         feature = someFeature[:, i]
-    #         t = np.arange(0, len(label) / 10, 0.1)
-    #
-    #         for k, labelIndex in enumerate(self.__class__.get_before_and_after_LC_label(label)):
-    #             tmp_t = np.arange(0, len(labelIndex) / 10, 0.1)
-    #             # tmp_t = t[labelIndex]
-    #             tmp_feature = feature[labelIndex]
-    #             tmp_label = label[labelIndex]
-    #
-    #             right = (tmp_t[np.where(tmp_label == 1)],
-    #                      tmp_feature[np.where(tmp_label == 1)])
-    #             straight = (tmp_t[np.where(tmp_label == 0)],
-    #                         tmp_feature[np.where(tmp_label == 0)])
-    #             left = (tmp_t[np.where(tmp_label == -1)],
-    #                     tmp_feature[np.where(tmp_label == -1)])
-    #
-    #             plt.scatter(*straight, color='#B122B2', alpha=0.5,
-    #                         edgecolor='none', label="Straight")
-    #             plt.scatter(*left, color='#FBA848', alpha=0.5,
-    #                         edgecolor='none', label="Left_LC")
-    #             plt.scatter(*right, color='#2FCDB4', alpha=0.5,
-    #                         edgecolor='none', label="Right_LC")
-    #             if flag:
-    #                 plt.legend()
-    #                 flag = False
-    #
-    #                 # plt.title("graph Title")
-    #                 # plt.xlim([tmp_label[0]/10,tmp_label[len(tmp_label) - 1]]/10)
-    #
-    #     os.makedirs('graph/', exist_ok=True)
-    #     plt.xlabel("Time[sec]")
-    #     plt.ylabel(nameOfFeature)
-    #     plt.savefig('graph/' + nameOfFeature + '.pdf')
-    #     plt.clf()
+            # def show_plot(self, nameOfFeature):
+            #     i = self.featureNames.index(nameOfFeature)
+            #
+            #     flag = True
+            #     for j, (label, someFeature) in enumerate(zip(pb.single_generator(self.oneDimVectors), self.twoDimVectors)):
+            #         feature = someFeature[:, i]
+            #         t = np.arange(0, len(label) / 10, 0.1)
+            #
+            #         for k, labelIndex in enumerate(self.__class__.get_before_and_after_LC_label(label)):
+            #             tmp_t = np.arange(0, len(labelIndex) / 10, 0.1)
+            #             # tmp_t = t[labelIndex]
+            #             tmp_feature = feature[labelIndex]
+            #             tmp_label = label[labelIndex]
+            #
+            #             right = (tmp_t[np.where(tmp_label == 1)],
+            #                      tmp_feature[np.where(tmp_label == 1)])
+            #             straight = (tmp_t[np.where(tmp_label == 0)],
+            #                         tmp_feature[np.where(tmp_label == 0)])
+            #             left = (tmp_t[np.where(tmp_label == -1)],
+            #                     tmp_feature[np.where(tmp_label == -1)])
+            #
+            #             plt.scatter(*straight, color='#B122B2', alpha=0.5,
+            #                         edgecolor='none', label="Straight")
+            #             plt.scatter(*left, color='#FBA848', alpha=0.5,
+            #                         edgecolor='none', label="Left_LC")
+            #             plt.scatter(*right, color='#2FCDB4', alpha=0.5,
+            #                         edgecolor='none', label="Right_LC")
+            #             if flag:
+            #                 plt.legend()
+            #                 flag = False
+            #
+            #                 # plt.title("graph Title")
+            #                 # plt.xlim([tmp_label[0]/10,tmp_label[len(tmp_label) - 1]]/10)
+            #
+            #     os.makedirs('graph/', exist_ok=True)
+            #     plt.xlabel("Time[sec]")
+            #     plt.ylabel(nameOfFeature)
+            #     plt.savefig('graph/' + nameOfFeature + '.pdf')
+            #     plt.clf()
 
-# read の段階で単位を揃えたい
-    
+            # read の段階で単位を揃えたい
+
     # ラベルの段階でroaとかじゃなくて特徴名(LCとか)でアクセスできるようにすればいいんじゃないの？
+    def read_6000(self):
+        DATA_PATH_6000 = self.__class__.DATA_PATH_6000
+        dataDicts = []
 
+        tmpList = sorted(os.listdir(DATA_PATH_6000))
+
+        bar = pb(len(tmpList))
+        print('6000番台読込中')
+
+        for i, subject in enumerate(tmpList):
+            for task in sorted(os.listdir(os.path.join(DATA_PATH_6000, subject))):
+                self.behaviornames.append(subject + task)
+                drvDF = pd.read_csv(os.path.join(DATA_PATH_6000, subject, task, subject + task + '-HostV_DrvInfo.csv'),
+                                    encoding='shift-jis', header=0,
+                                    names=['time', 'brake', 'gas', 'vel', 'steer', 'accX', 'accY', 'accZ', 'NaN'],
+                                    dtype='float16')
+                drvDF = drvDF.drop(['time', 'NaN'], axis=1)
+                roaDF = pd.read_csv(os.path.join(DATA_PATH_6000, subject, task, subject +
+                                                 task + '-HostV_RoadInfo.csv'), encoding='shift-jis', header=0,
+                                    dtype={'LC': 'int8'})
+                roaDF = roaDF['LC']
+                surDF = pd.read_csv(os.path.join(DATA_PATH_6000, subject, task, subject +
+                                                 task + '-SurVehicleInfo.csv'), encoding='shift-jis', header=0,
+                                    dtype='float16')
+
+                # def rangeindex(self):
+                #     return self.set_index([list(range(self.shape[0]))])
+                #
+                # pd.DataFrame.rangeindex = rangeindex
+                #
+                # dataDF = pd.concat([drvDF, roaDF, surDF], axis=1).dropna()
+                # dataDF = dataDF.rangeindex()
+
+                # print(dataDF.shape)
+                # print(np.where(dataDF.isnull().any(axis=1)))
+
+                dataDict = {'drv': drvDF.as_matrix(
+                ), 'roa': roaDF.as_matrix(), 'sur': surDF.as_matrix()}
+                dataDicts.append(dataDict)
+            # pandastameshi
+            bar.display_progressbar(i)
+        return dataDicts
+
+    def read_9000(self):
+        DATA_PATH_9000 = self.__class__.DATA_PATH_9000
+        dataDicts = []
+
+        print('9000番台読込中')
+        bar = pb(sorted(os.listdir(DATA_PATH_9000)))
+        for i, item in enumerate(bar.generator(0)):
+            for j, data in enumerate(sorted(os.listdir(os.path.join(DATA_PATH_9000, item)))):
+                print(data)
+                if i == 0:
+                    self.behaviornames.append(data)
+                    drvDF = pd.read_csv(os.path.join(
+                        DATA_PATH_9000, item, data), encoding='shift-jis', header=0, dtype='float16')
+                    drvDF = drvDF.drop(
+                        ['time[sec]', 'lat[deg]', 'lon[deg]'], axis=1)
+                    drvDF = drvDF.dropna()
+                    dataDicts.append({'drv': drvDF.as_matrix()})
+                elif i == 1:
+                    roaDF = pd.read_csv(os.path.join(
+                        DATA_PATH_9000, item, data), encoding='shift-jis', header=0, dtype={'LC': 'int8'})
+                    roaDF = roaDF['LC']
+                    dataDicts[j]['roa'] = roaDF.as_matrix()
+                elif i == 2:
+                    surDF = pd.read_csv(os.path.join(
+                        DATA_PATH_9000, item, data), encoding='shift-jis', header=0, dtype='float16')
+                    dataDicts[j]['sur'] = surDF.as_matrix()
+
+        return dataDicts
 
     def save_dataDicts(self):
         self.makeprojectdir("data")
@@ -995,7 +1069,7 @@ class Container:
         # np.save('ttns.npy', ttns)
 
     def get_cars(self, sur_row):
-        cars= np.array(sur_row)
+        cars = np.array(sur_row)
         # cars = sur_row.reshape(int(sur_row.shape[0] / 6), 6)
 
         cars_i = []
@@ -1135,32 +1209,35 @@ class Container:
     def is_label_and_feature_same_size(self):
         return self.label.shape[0] == self.feature.shape[0]
 
-    def __init__(self, dataInput):
+    def __init__(self, container_initializer):
         self.label = np.array([])
         self.feature = np.array([])
         self.twoDimVectors = []
         self.oneDimVectors = None
         self.featureNames = []
         self.behaviornames = []
-        if dataInput.value == 'read':
+        if container_initializer.value == 'read':
             d = []
             d.extend(self.read_6000())
             d.extend(self.read_9000())
             self.data_dicts = d
-        elif dataInput.value == 'origin':
+            self.save_dataDicts()
+        elif container_initializer.value == 'origin':
             datadicts_path = os.path.join(self.__class__.REPOSITORY_DIR, "data", "dataDicts.npy")
             behaviornames_path = os.path.join(self.__class__.REPOSITORY_DIR, "data", "behaviornames.npy")
             self.data_dicts = np.load(datadicts_path)
             self.behaviornames = np.load(behaviornames_path)
             print("読み込みが完了しました。")
-        elif dataInput.value == 'vector':
+        elif container_initializer.value == 'vector':
             np.save(os.path.join(self.__class__.REPOSITORY_DIR, "data", "dataDicts.npy"), self.data_dicts)
 
             self.oneDimVectors = np.load(os.path.join(self.__class__.REPOSITORY_DIR, "data", "oneDimVectors.npy"))
             self.twoDimVectors = np.load(os.path.join(self.__class__.REPOSITORY_DIR, "data", "twoDimVectors.npy"))
             self.featureNames = np.load(os.path.join(self.__class__.REPOSITORY_DIR, "data", "featureNames.npy"))
         else:
-            print("初期化に失敗しました。第一引数には列挙体DataInputの値を入力してください")
+            # データが有ればそれを読み込み、なければOriginalを読みこむ
+            print("初期化に失敗しました。第一引数にはContainerInitializerの値を入力してください")
+
 
 if __name__ == '__main__':
     print("lane_changing utility")

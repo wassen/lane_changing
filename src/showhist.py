@@ -4,13 +4,14 @@
 import numpy as np
 import os, sys
 import lane_changing as lc
-from lane_changing import Container, DataInput, Features, Label
+from lane_changing import Container, ContainerInitializer, Features, Label
 import matplotlib
 
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-ctn = Container(DataInput.loadOriginalData)
+# ctn = Container(DataInput.readFromCSVData)
+ctn = Container(ContainerInitializer.loadOriginalData)
 
 load = True
 xlist_2dim = ctn.feature_with_frames(Features.TimeToCollisionX, load=load)
@@ -20,7 +21,6 @@ start_labels = ctn.feature_with_frames(Features.Label, load=load)
 xlist, delete_index = ctn.extract_nearest_car(xlist_2dim)
 ylist, delete_index = ctn.extract_nearest_car(ylist_2dim)
 llist = np.delete(start_labels, delete_index)
-
 
 llist = np.array(llist)
 left = ctn.two_features_of_specific_label(xlist, ylist, llist, Label.begin_left_lanechange)
@@ -39,6 +39,7 @@ sp1 = fig.add_subplot(2, 2, 1)
 sp2 = fig.add_subplot(2, 2, 2)
 sp3 = fig.add_subplot(2, 2, 3)
 sp4 = fig.add_subplot(2, 2, 4)
+fig.subplots_adjust(hspace=0.3)
 
 left = np.array(left)
 
@@ -57,6 +58,10 @@ ylim = (-5, 5)
 
 normed = False
 
+# labels = [left, right, straight, brake]
+#
+# for label in labels:
+#
 H1 = sp1.hist2d(*left, bins=[np.linspace(*xlim, 61), np.linspace(*ylim, 61)], normed=normed)
 H2 = sp2.hist2d(*right, bins=[np.linspace(*xlim, 61), np.linspace(*ylim, 61)], normed=normed)
 H3 = sp3.hist2d(*straight, bins=[np.linspace(*xlim, 61), np.linspace(*ylim, 61)], normed=normed)
@@ -66,14 +71,14 @@ sp1.set_title('1st graph')
 sp2.set_title('2st graph')
 sp3.set_title('3st graph')
 sp4.set_title('4st graph')
-sp1.set_xlabel('x')
-sp2.set_xlabel('x')
-sp3.set_xlabel('x')
-sp4.set_xlabel('x')
-sp1.set_ylabel('y')
-sp2.set_ylabel('y')
-sp3.set_ylabel('y')
-sp4.set_ylabel('y')
+sp1.set_xlabel('x', y=-0.2)
+sp2.set_xlabel('x', y=-0.2)
+sp3.set_xlabel('x', y=-0.2)
+sp4.set_xlabel('x', y=-0.2)
+sp1.set_ylabel('y', x=0.2)
+sp2.set_ylabel('y', x=0.2)
+sp3.set_ylabel('y', x=0.2)
+sp4.set_ylabel('y', x=0.2)
 fig.colorbar(H1[3], ax=sp1)
 fig.colorbar(H2[3], ax=sp2)
 fig.colorbar(H3[3], ax=sp3)

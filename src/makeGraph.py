@@ -2,7 +2,7 @@
 import os
 import sys
 # ./makeGraph ttcx ttcy
-from lane_changing import Container, DataInput, Features
+from lane_changing import Container, ContainerInitializer, Features
 
 args = sys.argv
 # ここのやつ
@@ -13,5 +13,5 @@ feature2 = args[2]
 
 #わかりやすく整理したい
 # loadの自動化
-ctn = Container(DataInput.loadOriginalData)
+ctn = Container(ContainerInitializer.loadOriginalData)
 ctn.show_plot(Features(feature1), Features(feature2), load=False)
