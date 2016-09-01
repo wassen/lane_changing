@@ -64,15 +64,18 @@ class Label(IntEnum):
     begin_right_lanechange = 1
     right_lanechanging = 2
     braking_and_go_straight = 3
-    gas_and_go_straight = 3
+    gaspedal_and_go_straight = 4
 
 
-def dividelabelwithbrake(label, brake, threshold=5):
+def dividelabelwithbrakeandgas(label, brake, gas, threshold=5):
     '''
     直進ラベル(0)をブレーキ踏力のしきい値から0と3に分ける
     '''
-    return [Label.braking_and_go_straight.value if b >= threshold and l == Label.go_straight else l for l, b in
+    # TODO 二行に分ける必要なし。brakeかつアクセルとかいうイミフな状況は考えなくていいか。
+    brake_filtered_label = [Label.braking_and_go_straight.value if b >= threshold and l == Label.go_straight else l for l, b in
             zip(label, brake)]
+    return [Label.gaspedal_and_go_straight.value if g >= 2 and l == Label.go_straight else l for l, g in
+            zip(brake_filtered_label, gas)]
 
 
 class NeighborBlock:
@@ -628,7 +631,7 @@ class Container:
 
         # 暫定的にlabelを変更する策に出る
         for name, data_dict in zip(pb.single_generator(self.behaviornames), self.data_dicts):
-            label_dict[name] = dividelabelwithbrake(data_dict['roa'], data_dict['drv'][:, 0], threshold=5)
+            label_dict[name] = dividelabelwithbrakeandgas(data_dict['roa'], data_dict['drv'][:, 0], data_dict['drv'][:, 1], threshold=5)
         return label_dict
 
     # def label_sequence(self):
@@ -686,7 +689,7 @@ class Container:
             if feature.value == "label":
                 # TODO 暫定的にlabelを変更する策に出る
                 for name, data_dict in zip(pb.single_generator(self.behaviornames), self.data_dicts):
-                    feature_dict[name] = dividelabelwithbrake(data_dict['roa'], data_dict['drv'][:, 0], threshold=5)
+                    feature_dict[name] = dividelabelwithbrakeandgas(data_dict['roa'], data_dict['drv'][:, 0], data_dict['drv'][:, 1], threshold=5)
             else:
                 for data_dict, subjectName in zip(pb.single_generator(self.data_dicts), self.behaviornames):
                     feature_dict[subjectName] = feature_list_from_data_dict(feature, data_dict)
