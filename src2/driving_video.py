@@ -48,7 +48,7 @@ def output_video(vels, self_lanes, lane_numbers, rel_xes_list, rel_ys_list, rel_
 
     for i, (vel, self_lane, lane_number, rel_xes, rel_ys, rel_vys) in enumerate(
             zip(vels, self_lanes, lane_numbers, rel_xes_list, rel_ys_list, rel_vys_list)
-    )
+    ):
         #左から順に1,2,3となるように修正
         self_lane = mod_lane_number(self_lane, lane_number)
         img = np.array(BACK_GROUND)
