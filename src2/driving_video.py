@@ -24,10 +24,12 @@ SURROUND_NEARMISS_COLOR = ()
 WHITELINE_COLOR = (220, 220, 220)
 
 
+
 # TODO 曲率
 # TODO なめらかに車線変更
 # TODO 車線増加によるワープ
 # TODO 自車両の中心固定
+# TODO TTC1以内表示
 
 def mod_lane_number(self_lane, lane_number):
     return lane_number + 1 - self_lane

@@ -94,7 +94,7 @@ if __name__ == '__main__':
 
 else:
     global d6000, d9000, behavior_names6000, behavior_names9000
-    file_path = os.path.join(repo_env.TMP_DIR, '69data.npz')
+    file_path = os.path.join(repo_env.DATA_DIR, '69data.npz')
     if os.path.exists(file_path):
         load = np.load(file_path)
         d6000 = load['d6000']
@@ -105,5 +105,5 @@ else:
     else:
         d6000, behavior_names6000 = __read_6000()
         d9000, behavior_names9000 = __read_9000()
-        np.savez(os.path.join(repo_env.TMP_DIR, '69data.npz'), d6000=d6000, d9000=d9000,
+        np.savez(os.path.join(repo_env.DATA_DIR, '69data.npz'), d6000=d6000, d9000=d9000,
                  behavior_names6000=behavior_names6000, behavior_names9000=behavior_names9000)
