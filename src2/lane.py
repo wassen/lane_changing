@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # 左に増えてる
-lanes_self = [1,1,5,3]
+lanes_self = [1,1,2,3]
 lane_numbers = [1,1,6,3]
 
 def change_of_ln(lanes_self, lane_numbers):

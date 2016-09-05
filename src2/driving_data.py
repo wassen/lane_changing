@@ -95,6 +95,7 @@ if __name__ == '__main__':
 else:
     global d6000, d9000, behavior_names6000, behavior_names9000
     file_path = os.path.join(repo_env.DATA_DIR, '69data.npz')
+    print(file_path)
     if os.path.exists(file_path):
         load = np.load(file_path)
         d6000 = load['d6000']
