@@ -28,7 +28,6 @@ class ContainerInitializer(Enum):
 # リストじゃなくて辞書で。carとか
 # くそみたいな変数名を修正
 # pandasどうしよう。surだけ取り出すってのがめんどくさくなりそう。
-#
 
 
 
