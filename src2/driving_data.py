@@ -1,11 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
-import numpy as np
-import pandas as pd
-import repo_env
-
 
 def __get_cars(sur_row):
     sur_row = np.array(sur_row)
@@ -22,6 +17,7 @@ def __to_eachcar(sur):
 #     for info in infos:
 #         path = __get_path(6000, drv, behavior, info)
 #         pd.read_csv(path, ...)
+
 
 def __read_6000():
     dataDicts = []
@@ -62,7 +58,7 @@ def __read_6000():
 
 def __read_9000():
     dataDicts = []
-    behavior_names=[]
+    behavior_names = []
 
     print('9000番台読込中')
     for i, item in enumerate(sorted(os.listdir(repo_env.DATA_PATH_9000))):
