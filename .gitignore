@@ -4,5 +4,7 @@ tmp/
 lib/
 .venv/
 __pycache__/
-Graph/
+graph/
 lane_changing.pyc
+*.pyc
+*.avi

@@ -1,2 +1,3 @@
 #!/bin/sh
-source ./.venv/bin/activate
+parent=$(cd $(dirname $0);pwd)
+source $parent/.venv/bin/activate
