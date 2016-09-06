@@ -3,6 +3,7 @@ tmp/
 .idea/
 lib/
 .venv/
+.virtualenv/
 __pycache__/
 graph/
 lane_changing.pyc
