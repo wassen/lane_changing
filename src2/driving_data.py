@@ -4,10 +4,17 @@
 import os
 from os import listdir as ls
 from os.path import join
-import repo_env
+
+import re
 import numpy as np
 import pandas as pd
+from enum import Enum
+import repo_env
 
+
+# subject->被験者No(f6300等)
+# task->被験者に割り当てられたタスク(nc5はタスクなし。mseは楽曲の検索。特に考慮に入れず)
+# behavior ある被験者のひとつ分の運転行動。subject+task
 
 def __get_cars(sur_row):
     sur_row = np.array(sur_row)
@@ -26,7 +33,29 @@ def __to_eachcar(sur):
 #         pd.read_csv(path, ...)
 
 
+def subject_task_list(data_dir):
+    subjects = sorted(ls(data_dir))
+    return [subject + task for subject in subjects for task in sorted(ls(join(data_dir, subject)))]
+
+Class DataType(Enum):
+
+
+def get_path_from_behavior(behavior, data_dir, ):
+    subject = re.search('^[fm]\d\d\d\d', behavior).group(0)
+    task = re.search('(mse|nc\d|[AB]ex\d)$', behavior).group(0)
+    return join(data_dir, subject, task)
+
+
 def __read_6000():
+    behavior_list = (repo_env.DATA_PATH_6000)
+
+    for behavior in behavior_list:
+        dir = get_path_from_behavior(behavior, repo_env.DATA_PATH_6000)
+        join(dir + )
+
+
+
+
     dataDicts = []
 
     tmpList = sorted(os.listdir(repo_env.DATA_PATH_6000))
