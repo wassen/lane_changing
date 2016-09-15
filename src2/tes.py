@@ -26,6 +26,7 @@ def subjecttask_list():
     subjects = sorted(ls(repo_env.DATA_PATH_6000))
     return [subject + task for subject in subjects for task in sorted(ls(join(repo_env.DATA_PATH_6000, subject)))]
 
-import driving_data
+import driving_data as dd
 
-driving_data.__read6000()
+# dict.valuesで取り出してもいいが、順番が気になる
+for b in zip(dd.behavior_list, dd.behavior_key_nparrays_value)

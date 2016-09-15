@@ -9,4 +9,4 @@ graph/
 lane_changing.pyc
 *.pyc
 *.avi
-*DS_Store
+src2/lc2
