@@ -1,15 +1,17 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import shutil
 import os
+import re
+import shutil
 from os import listdir as ls
 from os.path import join
+
 import repo_env
-import re
 
 ls_in_9000 = ls(repo_env.DATA_PATH_9000)
 mod_dir = join(repo_env.DATA_DIR, "Original", "9000_mod")
+
 
 def copy_files_to_mod_dir(ls_in_kind, kind, kind_name):
     # re.searchでエラーが出るなら、DS_Store他ゴミファイルを削除する。
@@ -22,6 +24,7 @@ def copy_files_to_mod_dir(ls_in_kind, kind, kind_name):
         os.makedirs(mod_sub_task_dir, exist_ok=True)
         shutil.copy(join(repo_env.DATA_PATH_9000, kind, file),
                     join(mod_sub_task_dir, "{0}{1}-{2}.csv".format(subject, task, kind_name)))
+
 
 for kind in ls_in_9000:
     if "Behavior" in kind:
@@ -37,6 +40,7 @@ for kind in ls_in_9000:
         ls_in_sur = ls(join(repo_env.DATA_PATH_9000, kind))
         copy_files_to_mod_dir(ls_in_sur, kind, kind_name)
     else:
-        print("FOOk_the_DS_Store")
+        print("DS_Store等の一時ファイルを消してください")
 
-
+shutil.move(repo_env.DATA_PATH_9000, join(repo_env.DATA_DIR, "Original", "9000_old"))
+shutil.move(mod_dir, repo_env.DATA_PATH_9000)

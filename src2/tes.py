@@ -25,3 +25,7 @@ class KeySortDict(dict):
 def subjecttask_list():
     subjects = sorted(ls(repo_env.DATA_PATH_6000))
     return [subject + task for subject in subjects for task in sorted(ls(join(repo_env.DATA_PATH_6000, subject)))]
+
+import driving_data
+
+driving_data.__read6000()
