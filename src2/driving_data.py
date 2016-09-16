@@ -29,14 +29,14 @@ pd.DataFrame.droplatlon = droplatlon
 # task->被験者に割り当てられたタスク(nc5はタスクなし。mseは楽曲の検索。特に考慮に入れず)
 # behavior ある被験者のひとつ分の運転行動。subject+task
 
-def __get_cars(sur_row):
-    sur_row = np.array(sur_row)
-    cars = sur_row.reshape(int(sur_row.shape[0] / 4), 4).tolist()
-    return filter(lambda car: not all([item == 0 for item in car]), cars)
-
-
-def __to_eachcar(sur):
-    return [__get_cars(sur_row) for sur_row in sur]
+# def __get_cars(sur_row):
+#     sur_row = np.array(sur_row)
+#     cars = sur_row.reshape(int(sur_row.shape[0] / 4), 4).tolist()
+#     return filter(lambda car: not all([item == 0 for item in car]), cars)
+#
+#
+# def __to_eachcar(sur):
+#     return [__get_cars(sur_row) for sur_row in sur]
 
 
 # こんな感じで9000とどっちも取得したいけど、9,000でカオスと化してるディレクトリ構成でできるか？
@@ -134,21 +134,31 @@ def __read_csv():
         three_paths = __get_3paths_from_behavior(behavior, data_path)
         type_infos = (DrvTypeInfo, RoaTypeInfo, SurTypeInfo)
 
-        def npmats_from_paths_and_typeinfos(three_paths, type_infos):
+        def dataframe_from_paths_and_typeinfos(three_paths, type_infos):
             """
             :param three_paths:
             :param type_infos:
             :return {'drv':drv_npmat, 'roa':roa_npmat, 'sur':sur_npmat}:
             """
-            return {type_info.type_name: type_info.get_dataframe_from_csv(path).as_matrix()
+            # dataframes = {type_info.type_name: type_info.get_dataframe_from_csv(path)
+            #         for path, type_info in zip(three_paths, type_infos)}
+            return {type_info.type_name: type_info.get_dataframe_from_csv(path)
                     for path, type_info in zip(three_paths, type_infos)}
 
-        behavior_key_nparrays_value[behavior] = npmats_from_paths_and_typeinfos(three_paths, type_infos)
+        def __equalize_size(df_dict):
+            row_size = min([df_dict[t.type_name].shape[0] for t in type_infos])
+            return {t.type_name:df_dict[t.type_name][:row_size] for t in type_infos}
+
+        df_dict = dataframe_from_paths_and_typeinfos(three_paths, type_infos)
+
+        behavior_key_nparrays_value[behavior] = __equalize_size(df_dict)
+
 
 if __name__ == '__main__':
-    expect = [[1, 2, 3, 4], [5, 6, 7, 8], [9, 0, 1, 2], [7, 8, 9, 0]]
-    actual = __get_cars([1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 0, 0, 0, 0, 7, 8, 9, 0])
-    print(expect == actual)
+    pass
+    # expect = [[1, 2, 3, 4], [5, 6, 7, 8], [9, 0, 1, 2], [7, 8, 9, 0]]
+    # actual = __get_cars([1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 0, 0, 0, 0, 7, 8, 9, 0])
+    # print(expect == actual)
 
 else:
     print("importing driving_data...")
@@ -162,7 +172,7 @@ else:
     # if os.path.exists(file_path):
     #     load = np.load(file_path)
     #     behavior_list = load['behavior_list']
-    #     # pypyではここでバグる。dictをシリアライズできないっぽい感じ
+    #     # pypyではここでバグる。dictをシリアライズできないっぽい感じ nijuuhairetudemomuridatta
     #     behavior_key_nparrays_value = load['behavior_key_nparrays_value']
     #     load.close()
     # else:
@@ -171,7 +181,5 @@ else:
     # np.savez_compressed(file_path,
     #          behavior_list=behavior_list,
     #          behavior_key_nparrays_value=behavior_key_nparrays_value)
-
-    # lat and lon ?????????????
 
     print('complete importing')

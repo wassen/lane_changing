@@ -672,15 +672,7 @@ class Container:
         in 引数の特徴数分の配列
         """
 
-        def feature_list_from_data_dict(feature, data_dict):
-            feature_list = []
-            sur = self.toaccel(data_dict)
-            for sur_at_moment, lc_at_moment in zip(sur, data_dict['roa']):
-                feature_at_moment = []
-                for car in self.get_cars(sur_at_moment):
-                    feature_at_moment.append(self.calc_feature_from_car(car, feature))
-                feature_list.append(feature_at_moment)
-            return feature_list
+
 
         feature_dicts = []
         for feature in features:
