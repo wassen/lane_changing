@@ -231,6 +231,7 @@ if __name__ == '__main__':
         # TODO ProgressBarを2に対応させる。
         # label_list.append(df['roa']['lc'])
         # TODO vstack all behavior
+        # TODO lane_number, self_lane、左に車線があるかなどをを特徴に追加lane_numberが逆なことに注意
 
     print(feature_list)
 
