@@ -10,31 +10,33 @@ import numpy as np
 import pandas as pd
 import repo_env
 
-# module variable
-behavior_list = []
-behavior_key_dataframes_value = {}
-
 
 # define method
 def rename_columns(self, name_list):
     return self.rename(columns={column: name for column, name in zip(self.columns, name_list)})
+def droplatlon(self):
+    try:
+        return self.drop(['lat[deg]', 'lon[deg]'], axis=1)
+    except:
+        return self
 
 
 pd.DataFrame.rename_columns = rename_columns
+pd.DataFrame.droplatlon = droplatlon
 
 
 # subject->被験者No(f6300等)
 # task->被験者に割り当てられたタスク(nc5はタスクなし。mseは楽曲の検索。特に考慮に入れず)
 # behavior ある被験者のひとつ分の運転行動。subject+task
 
-def __get_cars(sur_row):
-    sur_row = np.array(sur_row)
-    cars = sur_row.reshape(int(sur_row.shape[0] / 4), 4).tolist()
-    return filter(lambda car: not all([item == 0 for item in car]), cars)
-
-
-def __to_eachcar(sur):
-    return [__get_cars(sur_row) for sur_row in sur]
+# def __get_cars(sur_row):
+#     sur_row = np.array(sur_row)
+#     cars = sur_row.reshape(int(sur_row.shape[0] / 4), 4).tolist()
+#     return filter(lambda car: not all([item == 0 for item in car]), cars)
+#
+#
+# def __to_eachcar(sur):
+#     return [__get_cars(sur_row) for sur_row in sur]
 
 
 # こんな感じで9000とどっちも取得したいけど、9,000でカオスと化してるディレクトリ構成でできるか？
@@ -75,12 +77,14 @@ class TypeInfo:
 class DrvTypeInfo(TypeInfo):
     type_name = "drv"
     names = ['time', 'brake', 'gas', 'vel', 'steer', 'accX', 'accY', 'accZ']
-    drops = ['time']
+    drops = ['time', ]
 
     @classmethod
     def get_dataframe_from_csv(cls, drv_path):
+
         return TypeInfo \
             .get_dataframe_from_csv(drv_path) \
+            .droplatlon() \
             .dropna(axis=1, how="all") \
             .rename_columns(cls.names) \
             .drop(cls.drops, axis=1)
@@ -119,76 +123,64 @@ def __get_3paths_from_behavior(behavior, number_dir):
 
 
 def __read_csv():
-    global behavior_list, behavior_key_dataframes_value
+    global behavior_list, behavior_key_nparrays_value
+    behavior6000_list = subject_task_list(repo_env.DATA_PATH_6000)
+    behavior9000_list = subject_task_list(repo_env.DATA_PATH_9000)
     behavior_list = subject_task_list(repo_env.DATA_PATH_6000) + subject_task_list(repo_env.DATA_PATH_9000)
-    behavior_key_dataframes_value = {}
+    data_path_list = [repo_env.DATA_PATH_6000 for _ in behavior6000_list] + [repo_env.DATA_PATH_9000 for _ in
+                                                                             behavior9000_list]
 
-    for behavior in behavior_list:
-        three_paths = __get_3paths_from_behavior(behavior, repo_env.DATA_PATH_6000)
+    for data_path, behavior in zip(data_path_list, behavior_list):
+        three_paths = __get_3paths_from_behavior(behavior, data_path)
         type_infos = (DrvTypeInfo, RoaTypeInfo, SurTypeInfo)
 
-        def dataframes_from_paths_and_typeinfos(three_paths, type_infos):
+        def dataframe_from_paths_and_typeinfos(three_paths, type_infos):
             """
             :param three_paths:
             :param type_infos:
-            :return {'drv':drv_df, 'roa':roa_df, 'sur':sur_df}:
+            :return {'drv':drv_npmat, 'roa':roa_npmat, 'sur':sur_npmat}:
             """
+            # dataframes = {type_info.type_name: type_info.get_dataframe_from_csv(path)
+            #         for path, type_info in zip(three_paths, type_infos)}
             return {type_info.type_name: type_info.get_dataframe_from_csv(path)
                     for path, type_info in zip(three_paths, type_infos)}
 
-        behavior_key_dataframes_value[behavior] = dataframes_from_paths_and_typeinfos(three_paths, type_infos)
+        def __equalize_size(df_dict):
+            row_size = min([df_dict[t.type_name].shape[0] for t in type_infos])
+            return {t.type_name:df_dict[t.type_name][:row_size] for t in type_infos}
 
+        df_dict = dataframe_from_paths_and_typeinfos(three_paths, type_infos)
 
-# def __read_9000():
-#     global behavior_list, behavior_key_dataframes_value
-#     behavior_list = subject_task_list(repo_env.DATA_PATH_9000)
-#     dataDicts = []
-#     behavior_names = []
-#
-#     print('9000番台読込中')
-#     for i, item in enumerate(sorted(os.listdir(repo_env.DATA_PATH_9000))):
-#         for j, data in enumerate(sorted(os.listdir(os.path.join(repo_env.DATA_PATH_9000, item)))):
-#             if i == 0:
-#                 behavior_names.append(data)
-#                 drvDF = pd.read_csv(os.path.join(
-#                     repo_env.DATA_PATH_9000, item, data), encoding='shift-jis', header=0, dtype='float16')
-#                 drvDF = drvDF.drop(
-#                     ['time[sec]', 'lat[deg]', 'lon[deg]'], axis=1)
-#                 drvDF = drvDF.dropna()
-#                 dataDicts.append({'drv': drvDF.as_matrix()})
-#             elif i == 1:
-#                 roaDF = pd.read_csv(os.path.join(
-#                     repo_env.DATA_PATH_9000, item, data), encoding='shift-jis', header=0, dtype={'LC': 'int8'})
-#                 # roaDF = roaDF['LC']
-#                 dataDicts[j]['roa'] = roaDF.as_matrix()
-#             elif i == 2:
-#                 surDF = pd.read_csv(os.path.join(
-#                     repo_env.DATA_PATH_9000, item, data), encoding='shift-jis', header=0, dtype='float16')
-#                 dataDicts[j]['sur'] = surDF.as_matrix()
-#     return dataDicts, behavior_names
+        behavior_key_nparrays_value[behavior] = __equalize_size(df_dict)
 
 
 if __name__ == '__main__':
-    expect = [[1, 2, 3, 4], [5, 6, 7, 8], [9, 0, 1, 2], [7, 8, 9, 0]]
-    actual = __get_cars([1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 0, 0, 0, 0, 7, 8, 9, 0])
-    print(expect == actual)
+    pass
+    # expect = [[1, 2, 3, 4], [5, 6, 7, 8], [9, 0, 1, 2], [7, 8, 9, 0]]
+    # actual = __get_cars([1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 0, 0, 0, 0, 7, 8, 9, 0])
+    # print(expect == actual)
 
 else:
+    # importするたび読み込んでたら使いにくい。小分けに読み込むとか、読み込むようのメソッド用意するとか。
     print("importing driving_data...")
-    global d6000, d9000, behavior_names6000, behavior_names9000
-    file_path = os.path.join(repo_env.DATA_DIR, '69data.npz')
-    print(file_path)
-    if os.path.exists(file_path):
-        load = np.load(file_path)
-        d6000 = load['d6000']
-        d9000 = load['d9000']
-        behavior_names6000 = load['behavior_names6000']
-        behavior_names9000 = load['behavior_names9000']
-        load.close()
-    else:
-        __read_csv()
-        np.savez(os.path.join(repo_env.DATA_DIR, '69data.npz'),
-                 behavior_list=[]
-        behavior_key_dataframes_value = {}
-                 d6000=d6000, d9000=d9000,
-                 behavior_names6000=behavior_names6000, behavior_names9000=behavior_names9000)
+    global behavior_list, behavior_key_nparrays_value
+    behavior_list = []
+    behavior_key_nparrays_value = {}
+
+    # 改めてreadcsvしたほうが断然早いが、pypyでやればなんとかなるか
+    # file_path = os.path.join(repo_env.DATA_DIR, '69data.npz')
+
+    # if os.path.exists(file_path):
+    #     load = np.load(file_path)
+    #     behavior_list = load['behavior_list']
+    #     # pypyではここでバグる。dictをシリアライズできないっぽい感じ nijuuhairetudemomuridatta
+    #     behavior_key_nparrays_value = load['behavior_key_nparrays_value']
+    #     load.close()
+    # else:
+    # 後ほど変数に代入する形に変える
+    __read_csv()
+    # np.savez_compressed(file_path,
+    #          behavior_list=behavior_list,
+    #          behavior_key_nparrays_value=behavior_key_nparrays_value)
+
+    print('complete importing')
