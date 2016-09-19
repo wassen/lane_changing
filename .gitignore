@@ -2,11 +2,11 @@ data/
 tmp/
 .idea/
 lib/
-.venv/
+.venv2/
 .virtualenv/
 __pycache__/
 graph/
 lane_changing.pyc
 *.pyc
 *.avi
-*DS_Store
+src2/lc2
