@@ -2,7 +2,7 @@ data/
 tmp/
 .idea/
 lib/
-.venv/
+.venv2/
 .virtualenv/
 __pycache__/
 graph/

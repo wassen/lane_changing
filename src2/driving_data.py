@@ -161,6 +161,7 @@ if __name__ == '__main__':
     # print(expect == actual)
 
 else:
+    # importするたび読み込んでたら使いにくい。小分けに読み込むとか、読み込むようのメソッド用意するとか。
     print("importing driving_data...")
     global behavior_list, behavior_key_nparrays_value
     behavior_list = []

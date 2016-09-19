@@ -6,3 +6,6 @@ libsvm_dir=$script_dir/lib/libsvm
 mkdir -p $libsvm_dir
 wget -O - $url | tar zx -C $libsvm_dir --strip-components 1
 cd $libsvm_dir && make
+
+wget https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/fselect/fselect.py -P $libsvm_dir/tools
+chmod u+x $libsvm_dir/tools/fselect.py
