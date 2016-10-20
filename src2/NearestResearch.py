@@ -99,7 +99,7 @@ def __to_feature(car, feature):
 def __get_cars(sur_row):
     sur_row = np.array(sur_row)
     cars = sur_row.reshape(int(sur_row.shape[0] / 6), 6).tolist()
-    return filter(lambda car: not all([item == 0 for item in car]), cars)
+    return filter(lambda car: not all([item == 0 for item in car[:4]]), cars)
 
 
 ## TODO driving dataと同じコード。ddのほうは読み込み時間かかって使いにくい。csv読み込みは別にメソッドで用意したほうがいいのかもしれない。
@@ -124,7 +124,7 @@ def __add_accel(sur):
         previous = sur_each_car[0:frame_numbers - 1, Relvx:Relvy + 1]
 
         # 1フレーム目の加速度は[0, 0]
-        accel = np.r_[[[0, 0]], current - previous]
+        accel = np.r_[[[0, 0]], current - previous] * 10
 
         sur_each_car_list_with_accel.append(np.c_[sur_each_car, accel])
 
@@ -159,9 +159,7 @@ def __sur_feature(sur, feature):
     for each_car in __to_eachcar_list(sur):
         nine_neighbor = np.ones(9).reshape(3, 3) * np.float('inf')
         for car in each_car:
-            y, x = __to_index(car)
             feature_value = __to_feature(car, feature)
-            nine_neighbor[y][x] = feature_value
         afeature.append([math.atan(neigh) for neigh in nine_neighbor.reshape(9)])
     return np.array(afeature)
 
@@ -222,118 +220,37 @@ def __shift_pred_frames(feature_df, lc_ser):
 
 
 if __name__ == '__main__':
-    # dataframeとnparrayをもうちょっとわかりやすい基準に分けたい。
 
     import time
 
-    label_list = []
-    feature_list = []
-    for i, df in enumerate(dd.behavior_key_nparrays_value.values()):
-        start = time.time()
-        print(i)
+    keys = dd.behavior_key_nparrays_value.keys()
+    values = dd.behavior_key_nparrays_value.values()
+    rows = []
+    for key, df in zip(keys, values):
         sur = __add_accel(df['sur'].as_matrix())
+        for frame, each_car in enumerate(__to_eachcar_list(sur)):
+            fx = Features.TimeToCollisionX
+            fy = Features.TimeToCollisionY
+            di = Features.Distance
 
-
-        drv_df = df['drv'][:][['brake', 'gas', 'vel', 'steer']]
-
-        # クソコード
-        hl = pd.Series(np.float('NaN') if item == 'Null' else float(item)for item in df['roa']['host_lane']).interpolate()
-        ln = pd.Series(np.float('NaN') if item == 'Null' else float(item)for item in df['roa']['lane_number']).interpolate()
-        roa_df = pd.DataFrame([hl, ln]).transpose()
-
-        feature_name = Features.TimeToCollisionX
-        columns = ['{0}_{1}_{2}'.format(feature_name, y, x) for y in ['Front', 'Center', 'Rear'] for x in
-                   ['Left', 'Center', 'Right']]
-        print('TTCまえ')
-        print(time.time() - start)
-        sur_feature = __sur_feature(sur, Features.TimeToActualCollision)
-        print('TTC後')
-        print(time.time() - start)
-
-        sur_feature_df = DF(sur_feature, columns=columns)
-        #feature_df = pd.concat([drv_df, roa_df, sur_feature_df], axis=1, join='inner')
-
-        # kusoko-dohajimari
-        def __relv(sur):
-            # naming
-            afeature = []
-            for each_car in __to_eachcar_list(sur):
-                if len(each_car) == 0:
-                    t = 0
+            ttc_list = [(__to_feature(car, fx), __to_feature(car, fy)) for car in each_car]
+            import numpy as np
+            danger_list = []
+            for ttc in ttc_list:
+                sh = 0.5
+                if (sh > ttc[0] > 0 and sh > ttc[1] > 0):
+                    danger_list.append(True)
                 else:
-                    t = np.average([car[3] for car in each_car])
-                afeature.append(t)
-            return np.array(afeature)
+                    danger_list.append(False)
 
+            toodanger = any(danger_list)
+            if toodanger:
+                l = np.where(danger_list)[0] + 1
+                rows.append("{},{},{}".format(key, frame + 2, l))
 
-        sur_feature2 = __relv(sur)
-        sur_feature2_df = DF(sur_feature2, columns=['new!'])
-        feature_df = pd.concat([drv_df, roa_df, sur_feature_df, sur_feature2_df], axis=1, join='inner')
+    with open('collisionlist.csv', 'w') as f:
+        for row in rows:
+            f.write(row)
+            # なんとかならんのか
+            f.write('\n')
 
-        # kusoko-doowari
-
-        # ここfeature_dfのメソッド拡張してやれたら見た目すっきりしそう。なんにせよ再代入が嫌
-        feature_df, lc_ser = __to_30frames(feature_df, df['roa']['lc'])
-        feature_df, lc_ser = __delete_lc_after3(feature_df, lc_ser)
-        feature_df, lc_ser = __shift_pred_frames(feature_df, lc_ser)
-
-        # 暫定 TTAC以外でNanがあるらしい・・・勘弁してくれ。
-        feature_list.append(feature_df.fillna(0).as_matrix())
-        label_list.append(lc_ser)
-        print('おしまい')
-        print(time.time() - start)
-        # 最後にデータを確認
-        # TODO データの保存。
-        # TODO ProgressBarを2に対応させる。
-        # label_list.append(df['roa']['lc'])
-        # TODO vstack all behavior
-        # TODO lane_number, self_lane、左に車線があるかなどをを特徴に追加lane_numberが逆なことに注意
-        # 加速度って10倍しなきゃ？
-        # Keepの内容見よう。
-
-    X = np.vstack(feature_list)
-    Y = np.hstack(label_list)
-
-    # import pandas as pd
-    # addaccel(pd.DataFrame([[1, 2, 3, 4, 1, 1, 3, 4, 5, 3, 2, 1],
-    #                       [1, 3, 3, 5, 1, 1, 2, 2, 4, 5, 1, 1],
-    #                       [1, 3, 4, 2, 1, 1, 4, 4, 4, 5, 1, 1]]).as_matrix())
-    print('ほんとにおしまい')
-
-    np.savez_compressed(join(repo_env.DATA_DIR,'X'), X=X)
-
-    l = f_train, f_test, l_train, l_test = train_test_split(X, Y, test_size=0.25, train_size=0.75)
-
-    # 120以上がsur_feature
-    print(X.shape)
-    #
-    print(all(np.where(np.isnan(X))[1] > 120))
-
-    print(any(np.isnan(np.array(f_train).reshape(f_train.size))))
-    print(any(np.isnan(np.array(f_test).reshape(f_test.size))))
-    print(any(np.isnan(np.array(l_train).reshape(l_train.size))))
-    print(any(np.isnan(np.array(l_test).reshape(l_test.size))))
-    print([np.float('inf') in a for a in l])
-
-
-    # 1のクラス数に合わせる、拡張して、全てのクラスのminを計算したい
-    fv_train_1 = f_train[l_train == 1]
-    fv_train_m1 = f_train[l_train == -1]
-    sample = min(fv_train_1.shape[0], fv_train_m1.shape[0])
-
-    fv_train_1 = f_train[l_train == 1][:sample, :]
-    fv_train_0 = f_train[l_train == 0][:sample*5, :]
-    fv_train_m1 = f_train[l_train == -1][:sample, :]
-    f_train = np.r_[fv_train_m1, fv_train_0, fv_train_1]
-    l_train = np.r_[np.ones(sample) * -1, np.zeros(sample * 5), np.ones(sample)]
-
-    def normalize(train, test):
-        scaler = sklearn.preprocessing.MinMaxScaler()
-        return scaler.fit_transform(train), scaler.transform(test)
-
-
-    # これもメソッド拡張したい。
-    f_train, f_test = normalize(f_train, f_test)
-
-    np.savez_compressed(join(repo_env.DATA_DIR, 'train_test_feature_label')
-                        , f_train=f_train, l_train=l_train, f_test=f_test, l_test=l_test)
