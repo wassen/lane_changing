@@ -14,9 +14,9 @@
 
 ### How do I get set up?
 
-
-* Summary of set up
-$ git clone これ  
+* Summary of set up  
+$ git clone https://github.com/wassen/lane_changing.git  
+// $ pyenv install miniconda2-latest
 $ source activate  
 $ pip install -U pip  
 $ pip install pyvenv  
