@@ -29,14 +29,13 @@ pd.DataFrame.droplatlon = droplatlon
 # task->被験者に割り当てられたタスク(nc5はタスクなし。mseは楽曲の検索。特に考慮に入れず)
 # behavior ある被験者のひとつ分の運転行動。subject+task
 
-# def __get_cars(sur_row):
-#     sur_row = np.array(sur_row)
-#     cars = sur_row.reshape(int(sur_row.shape[0] / 4), 4).tolist()
-#     return filter(lambda car: not all([item == 0 for item in car]), cars)
-#
-#
-# def __to_eachcar(sur):
-#     return [__get_cars(sur_row) for sur_row in sur]
+def __get_cars(sur_row):
+    sur_row = np.array(sur_row)
+    cars = sur_row.reshape(int(sur_row.shape[0] / 4), 4).tolist()
+    return filter(lambda car: not all([item == 0 for item in car]), cars)
+
+def to_eachcar(sur):
+    return [__get_cars(sur_row) for sur_row in sur]
 
 
 # こんな感じで9000とどっちも取得したいけど、9,000でカオスと化してるディレクトリ構成でできるか？
@@ -129,8 +128,9 @@ def __read_csv():
     behavior_list = subject_task_list(repo_env.DATA_PATH_6000) + subject_task_list(repo_env.DATA_PATH_9000)
     data_path_list = [repo_env.DATA_PATH_6000 for _ in behavior6000_list] + [repo_env.DATA_PATH_9000 for _ in
                                                                              behavior9000_list]
-
-    for data_path, behavior in zip(data_path_list, behavior_list):
+    datapath9000 = [repo_env.DATA_PATH_9000 for _ in behavior9000_list]
+    # 暫定6000番台削除
+    for data_path, behavior in zip(datapath9000, behavior9000_list):
         three_paths = __get_3paths_from_behavior(behavior, data_path)
         type_infos = (DrvTypeInfo, RoaTypeInfo, SurTypeInfo)
 
@@ -148,7 +148,6 @@ def __read_csv():
         def __equalize_size(df_dict):
             row_size = min([df_dict[t.type_name].shape[0] for t in type_infos])
             return {t.type_name:df_dict[t.type_name][:row_size] for t in type_infos}
-
         df_dict = dataframe_from_paths_and_typeinfos(three_paths, type_infos)
 
         behavior_key_nparrays_value[behavior] = __equalize_size(df_dict)

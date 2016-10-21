@@ -112,6 +112,7 @@ def output_video(vels, self_lanes, lcs , lane_numbers, rel_xes_list, rel_ys_list
         for rel_x, rel_y, rel_vy in zip(rel_xes, rel_ys, rel_vys):
             cosuc = center_of_surrounding_car(cosec, rel_x, rel_y)
             draw_car(cosuc, SURROUND_COLOR)
+            print(vel, rel_vy)
             draw_speed(cosuc, vel + rel_vy)
 
         # 白線
