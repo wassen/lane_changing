@@ -41,7 +41,9 @@ for beh, df in zip(data.keys(), data.values()):
     self_lanes = completion_Null(self_lanes, int)
     lane_numbers = completion_Null(lane_numbers, int)
     vels = completion_Null(vels, float)
-    lcs = [float(lc) for lc in lcs]
+    lcs = [int(lc) for lc in lcs]
+    # driving datadeyare
+    lcs = dd.dividelabelwithbrakeandgas(lcs, df['drv']['brake'], df['drv']['gas'])
     sur = dd.to_eachcar(sur)
     rel_xes_list = get_xes_list(sur)
     rel_ys_list = get_ys_list(sur)
@@ -52,4 +54,4 @@ for beh, df in zip(data.keys(), data.values()):
 
     # TODO 引数をDataFrameでひとまとめにする。
     filename = beh
-    dv.output_video(vels, self_lanes, lcs, lane_numbers, rel_xes_list, rel_ys_list, rel_vys_list, 'a')
+    dv.output_video(vels, self_lanes, lcs, lane_numbers, rel_xes_list, rel_ys_list, rel_vys_list, beh)

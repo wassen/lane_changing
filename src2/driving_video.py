@@ -4,6 +4,8 @@
 import numpy as np
 import cv2
 import time
+import os
+import repo_env
 
 
 def meter2pix(m):
@@ -22,6 +24,7 @@ SELF_NEARMISS_COLOR = ()
 SURROUND_COLOR = (239, 144, 96)
 SURROUND_NEARMISS_COLOR = ()
 WHITELINE_COLOR = (220, 220, 220)
+
 
 
 
@@ -70,7 +73,8 @@ def output_video(vels, self_lanes, lcs , lane_numbers, rel_xes_list, rel_ys_list
 
     fourcc = cv2.cv.CV_FOURCC(*'mp4v')
     FPS = 10
-    vout = cv2.VideoWriter(str(name)+'.avi', fourcc, FPS, (IMG_WIDTH, IMG_HEIGHT,))
+    path = os.path.join(repo_env.OUTPUT_DIR, '{}.avi'.format(name))
+    vout = cv2.VideoWriter(path, fourcc, FPS, (IMG_WIDTH, IMG_HEIGHT,))
 
     for i, (vel, self_lane, lc, lane_number, rel_xes, rel_ys, rel_vys) in enumerate(
             zip(vels, self_lanes, lcs, lane_numbers, rel_xes_list, rel_ys_list, rel_vys_list)
@@ -102,6 +106,12 @@ def output_video(vels, self_lanes, lcs , lane_numbers, rel_xes_list, rel_ys_list
             elif lc == -1:
                 font = cv2.FONT_HERSHEY_SIMPLEX
                 cv2.putText(img, 'left lc', tuple(np.array(cosec, np.uint16) - (80, 20)), font, 1, (255, 255, 255))
+            elif lc == 3:
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                cv2.putText(img, 'braking', tuple(np.array(cosec, np.uint16) - (80, 20)), font, 1, (255, 255, 255))
+            elif lc == 4:
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                cv2.putText(img, 'accel', tuple(np.array(cosec, np.uint16) - (80, 20)), font, 1, (255, 255, 255))
 
 
         cosec = center_of_self_car()

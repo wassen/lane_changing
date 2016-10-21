@@ -37,6 +37,26 @@ def __get_cars(sur_row):
 def to_eachcar(sur):
     return [__get_cars(sur_row) for sur_row in sur]
 
+class Label():
+    left_lanechanging = -2
+    begin_left_lanechange = -1
+    go_straight = 0
+    begin_right_lanechange = 1
+    right_lanechanging = 2
+    braking_and_go_straight = 3
+    gaspedal_and_go_straight = 4
+
+
+def dividelabelwithbrakeandgas(label, brake, gas, threshold=5):
+    '''
+    直進ラベル(0)をブレーキ踏力のしきい値から0と3に分ける
+    '''
+    # TODO 二行に分ける必要なし。brakeかつアクセルとかいうイミフな状況は考えなくていいか。
+    brake_filtered_label = [Label.braking_and_go_straight if b >= threshold and l == Label.go_straight else l for
+                            l, b in
+                            zip(label, brake)]
+    return [Label.gaspedal_and_go_straight if g >= 2 and l == Label.go_straight else l for l, g in
+            zip(brake_filtered_label, gas)]
 
 # こんな感じで9000とどっちも取得したいけど、9,000でカオスと化してるディレクトリ構成でできるか？
 # for behavior in behaviors:
