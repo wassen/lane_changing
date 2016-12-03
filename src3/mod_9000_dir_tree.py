@@ -42,5 +42,5 @@ for kind in ls_in_9000:
     else:
         print("DS_Store等の一時ファイルを消してください")
 
-shutil.move(repo_env.DATA_PATH_9000, join(repo_env.DATA_DIR, "Original", "9000_old"))
+shutil.move(repo_env.DATA_PATH_9000, repo_env.OLD_9000_DIR)
 shutil.move(mod_dir, repo_env.DATA_PATH_9000)

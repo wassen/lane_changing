@@ -1,19 +1,37 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import numpy as np
-import sklearn
-from sklearn.cross_validation import train_test_split
-import pandas as pd
-from pandas import DataFrame as DF
-
-import os
-from os.path import join
 import math
-import driving_data as dd
-import repo_env
+from os.path import join
+import numpy as np
+import pandas as pd
+import sklearn
+from pandas import DataFrame as DF
+from sklearn.model_selection import train_test_split
 import constants as C
+import repo_env
 
+
+def start_index(label):
+    """"""
+    label = np.array(label)
+    labelLists = []
+    rLcLabel = list(np.where(label == 1)[0])
+    lLcLabel = list(np.where(label == -1)[0])
+
+    rDelList = []
+    previous = -2
+    for i, l in enumerate(rLcLabel):
+        if l == previous + 1:
+            rDelList.append(i)
+        previous = l
+    lDelList = []
+    previous = -2
+    for i, l in enumerate(lLcLabel):
+        if l == previous + 1:
+            lDelList.append(i)
+        previous = l
+    return {"right": np.delete(rLcLabel, rDelList), 'left': np.delete(lLcLabel, lDelList)}
 
 class Features():
     # note:name = value
@@ -228,7 +246,7 @@ if __name__ == '__main__':
 
     label_list = []
     feature_list = []
-    for i, df in enumerate(dd.behavior_key_nparrays_value.values()):
+    for i, df in enumerate(dd.behavior_and_drivingdata.values()):
         start = time.time()
         print(i)
         sur = __add_accel(df['sur'].as_matrix())
