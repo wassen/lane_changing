@@ -12,26 +12,24 @@ import constants as C
 import repo_env
 
 
-def start_index(label):
-    """"""
-    label = np.array(label)
-    labelLists = []
-    rLcLabel = list(np.where(label == 1)[0])
-    lLcLabel = list(np.where(label == -1)[0])
-
-    rDelList = []
-    previous = -2
-    for i, l in enumerate(rLcLabel):
-        if l == previous + 1:
-            rDelList.append(i)
-        previous = l
-    lDelList = []
-    previous = -2
-    for i, l in enumerate(lLcLabel):
-        if l == previous + 1:
-            lDelList.append(i)
-        previous = l
-    return {"right": np.delete(rLcLabel, rDelList), 'left': np.delete(lLcLabel, lDelList)}
+def start_index(l):
+    def onetotwo(n):
+        if n == 0:
+            return 0
+        elif n == 1:
+            return 2
+        elif n == -1:
+            return 1
+        else:
+            raise
+    l = np.array(l)
+    l = map(onetotwo, l)
+    l = l - np.append(0,l[:-1])
+    if l[0] == 0:
+        l[0] = -10
+    return {'str':  list(np.where(l < 0)[0]),
+            'right':list(np.where(l == 2)[0]),
+            'left': list(np.where(l == 1)[0]),}
 
 class Features():
     # note:name = value
