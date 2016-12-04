@@ -20,7 +20,7 @@ blist = np.load(os.path.join(repo_env.TMP_DIR, 'blist.npy'))
 import ddTools
 
 
-l = [0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,-1,-1,-1,-1,-1,0,0,0,0,0]
+l = [0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,-1,-1,-1,-1,-1,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,]
 
 
 def start_index2(l):
@@ -42,11 +42,37 @@ def start_index2(l):
             'right':list(np.where(l == 2)[0]),
             'left': list(np.where(l == 1)[0]),}
 
-for c, b in zip(a, blist):
-    print(b, start_index2(c)['right'] == list(ddTools.start_index(c)['right']), start_index2(c)['left']== list(ddTools.start_index(c)['left']))
+# for c, b in zip(a, blist):
+#     print(b, start_index2(c)['right'] == list(ddTools.start_index(c)['right']), start_index2(c)['left']== list(ddTools.start_index(c)['left']))
 
 print(l)
 print(start_index2(l))
 exp = start_index2(l)
-ans = {'str':[0,15,25], 'right':[10], 'left':[20]}
+ans = {'str':[0,15,25,35,45], 'right':[10,30,40], 'left':[20]}
+
 print(exp == ans)
+
+def next_lc(num, start_index):
+
+    def min_with_st(ite, st):
+        l = filter(lambda x: x > st, ite)
+        if len(l) == 0:
+            return float("inf")
+        else:
+            return min(l)
+    r = min_with_st(start_index['right'], num)
+    l = min_with_st(start_index['left'], num)
+
+    if r < l:
+        return r, 'right'
+    elif l < r:
+        return l, 'left'
+    else:
+        return float('inf'), 'None'
+
+
+
+for i in range(50):
+    print(i, next_lc(i,ans))
+
+'9000_str_to_right'

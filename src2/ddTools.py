@@ -11,6 +11,23 @@ from sklearn.model_selection import train_test_split
 import constants as C
 import repo_env
 
+def next_lc(num, start_index):
+
+    def min_with_st(ite, st):
+        l = filter(lambda x: x > st, ite)
+        if len(l) == 0:
+            return float("inf")
+        else:
+            return min(l)
+    r = min_with_st(start_index['right'], num)
+    l = min_with_st(start_index['left'], num)
+
+    if r < l:
+        return r, 'right'
+    elif l < r:
+        return l, 'left'
+    else:
+        return float('inf'), 'None'
 
 def start_index(l):
     def onetotwo(n):
