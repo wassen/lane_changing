@@ -21,8 +21,8 @@ import pandas as pd
 
 sns.set()
 df = sns.load_dataset("iris")
-df = pd.DataFrame([[1,None,2],[1, None,3],[1, None, 2],[1, None, 2]], columns=['none','a','b'])
-sns.pairplot(df)
+df = pd.DataFrame([[1,None,None, 'a'],[None,3,4,'b'],[None,None,None,'c']], columns=['a','b','c','d'])
+sns.pairplot(df, hue='d', dropna=True)
 print(df)
 sns.plt.show()
 
@@ -36,7 +36,6 @@ sns.plt.show()
 #
 #
 # import random
-a = pd.DataFrame([[1,2,4, 'a'],[None,3,4,'b'],[3,4,6,'c']], columns=['a','b','c','d'])
 #
 # print(a.shape)
 # green_to_red = sns.diverging_palette(145, 10,n=a.shape[0])#, s=70, l=40, n=3
