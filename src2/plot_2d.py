@@ -30,7 +30,7 @@ def load_right_divide_9000():
     return l
 
 features = []
-for data in load_right_divide_9000():
+for j,data in enumerate(load_right_divide_9000()):
     start_index = dT.start_index(data['roa']['lc'])['right'][0]
     if start_index < 100:
         first_of_array = 0
@@ -48,9 +48,11 @@ for data in load_right_divide_9000():
                'gas', 'brake', 'steer',
                'front_center_distance','front_center_relvy', 'front_center_ttcy',
                'rear_right_distance', 'rear_right_ttcy', 'rear_right_relvy']
-
+    if j == 3:
+        pass
 
     for i, (drv, roa, sur) in enumerate(zip(drv_10_sec.iterrows(),roa_10_sec.iterrows(),sur_10_sec)):
+
         feature = []
         drv=drv[1]
 
@@ -83,7 +85,7 @@ for data in load_right_divide_9000():
         feature.append(1/r_r_car_ttcy if r_r_car_ttcy is not None else None)
 
         features.append(feature)
-
+    # dfdezenbumatomeru
     import seaborn as sns
     plot_data = pd.DataFrame(features, columns=columns)
     green_to_red = sns.diverging_palette(145, 10, n=100, center="dark")  # , s=70, l=40, n=3
