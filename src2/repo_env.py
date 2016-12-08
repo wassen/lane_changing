@@ -13,6 +13,11 @@ SVM_TOOLS_DIR = os.path.join(LIBRARY_DIR, 'libsvm', 'tools')
 OLD_9000_DIR = os.path.join(DATA_DIR, "Original", "9000_old")
 MOD_9000_DIR = os.path.join(DATA_DIR, "Original", "9000_mod")
 
+
+
+def path(*paths):
+    return os.path.join(REPOSITORY_DIR, *paths)
+
 # これexistOK指定しなかったらどうなんだ、第一引数はどっちで処理されるんだ
 # 実際のExist_OKの実装を参考にしよう
 def make_dirs(*dir,**kwargs):

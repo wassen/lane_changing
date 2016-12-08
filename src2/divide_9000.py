@@ -26,13 +26,15 @@ for behavior in dd.behavior_list:
         if ddTools.next_lc(start_index_str, start_indexes)[1] == 'right':
             repo_env.make_dirs('data', 'divide_9000', behavior, 'right', str(r_count) , exist_ok=True)
             for tYpe in ('drv','roa','sur'):
-                np.save(join(repo_env.DATA_DIR, 'divide_9000', behavior, 'right', str(r_count), tYpe),
-                        dd.behavior_and_drivingdata[behavior][tYpe][start_index_str:next_start_index_str])
+                dd.behavior_and_drivingdata[behavior][tYpe][start_index_str:next_start_index_str].to_pickle(
+                    join(repo_env.DATA_DIR, 'divide_9000', behavior, 'right', str(r_count), tYpe),
+                )
             r_count += 1
         elif ddTools.next_lc(start_index_str, start_indexes)[1] == 'left':
             repo_env.make_dirs('data', 'divide_9000', behavior, 'left', str(l_count), exist_ok=True)
             for tYpe in ('drv', 'roa', 'sur'):
-                np.save(join(repo_env.DATA_DIR, 'divide_9000', behavior, 'left', str(l_count), tYpe),
-                        dd.behavior_and_drivingdata[behavior][tYpe][start_index_str:next_start_index_str])
+                dd.behavior_and_drivingdata[behavior][tYpe][start_index_str:next_start_index_str].to_pickle(
+                    join(repo_env.DATA_DIR, 'divide_9000', behavior, 'left', str(l_count), tYpe),
+                )
             l_count += 1
 

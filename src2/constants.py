@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import math
+LANE_WIDTH = 3.2
 
 CAR_WIDTH = 2
 CAR_LENGTH = 4
