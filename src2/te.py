@@ -4,38 +4,59 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def pairplot(df, **kargs):
+
+def rm_duplicates(l):
+    s = []
+    for item in l:
+        if not all(np.in1d(item, s)):
+            s.append(item)
+    return s
+
+def pairplot(df, **kwargs):
+    """
+
+    :param df:
+    :param kwargs:
+    :return: matplotlib.pyplot.figure
+    """
 
     fig = plt.figure()
 
-    if kargs.has_key("hue"):
-        label = df[kargs["hue"]]
-        # axisいんのか？
-        feature = df.drop(kargs["hue"], axis=1)
+    # kwargs
+    if kwargs.has_key("hue"):
+        labels = df[kwargs["hue"]]
     else:
         # 面倒なので今のところエラーで
         raise
+    if kwargs.has_key("palette"):
+        palette=kwargs["palette"]
+    else:
+        # 面倒なので今のところエラーで
+        raise
+
+    def prepro(df):
+        def assign_color_to_label(df):
+            corresp = {label: color for label, color in zip(rm_duplicates(df[labels]), palette)}
+            return [corresp[label] for label in df[labels]]
+
+        return df.assign(**{"color": assign_color_to_label}).drop(kwargs["hue"], axis=1)
+
+    df = prepro(df)
+
+    feature = df.drop("color", axis=1)
+
     feature_number = feature.shape[1]
-    feature_names = feature.columns
 
     comb = [(x,y) for y in feature for x in feature]
 
-    lims = {fname: (min(feature[fname]), max(feature[fname])) for fname in feature}
-
-    # fig, subplots_2d = plt.subplots(nrows=feature_number, ncols=feature_number, sharex=True, sharey=True)
-    #
-    # from itertools import chain
-    # subplots = list(chain.from_iterable(subplots_2d))
+    # lims = {fname: (min(feature[fname]), max(feature[fname])) for fname in feature}
 
     sp_list=[]
     scatter_flag=[False for _ in feature]
     for i, fnames in enumerate(comb):
-        # sp_number = feature_number
-        # int(i/sp_number)
-        # i%sp_number
 
-        sp_row = list(feature_names).index(fnames[1])
-        sp_col = list(feature_names).index(fnames[0])
+        sp_row = feature.columns.get_loc(fnames[1])
+        sp_col = feature.columns.get_loc(fnames[0])
 
         kwargs_sp = {}
         if sp_row > 0:
@@ -48,17 +69,41 @@ def pairplot(df, **kargs):
 
         sp = fig.add_subplot(feature_number, feature_number, i + 1, **kwargs_sp)
         sp_list.append(sp)
-        # sp.set_xlim(lims[fnames[0]])
-        # sp.set_ylim(lims[fnames[1]])
+
+        f = df[[fnames[0],fnames[1],"color"]].dropna()
+
+        def feature_each_label(feature, labels):
+            return [feature.as_matrix()[np.where(np.array(labels) == label)[0]] for label in rm_duplicates(labels)]
         if sp_row == sp_col:
-            sp.hist(feature[fnames[0]])
-            # sp.title = 'A tale of 2 subplots'
-            # sp.ylabel('Damped oscillation')
+            # クソコード
+            sp.hist(feature_each_label(f[fnames[0]], f["color"]), align='left', color=rm_duplicates(f["color"]), stacked=True)
         else:
-            sp.scatter(*[feature[fname] for fname in fnames])
-            # sp.xlabel('time (s)')
-            # sp.ylabel('Undamped')
+            # d=[feature_each_label(feature[fname], labels) for fname in fnames]
+            # data = np.array([feature_each_label(feature[fname], labels) for fname in fnames])
+            # # nanの行をpaletetと一緒に削除
+            sp.scatter(*[feature_each_label(f[fname], f["color"]) for fname in fnames], color=rm_duplicates(f["color"]))
+
+        def hide_unnecessary_label():
+
+            if sp_row != feature_number - 1:
+                sp.get_xaxis().set_visible(False)
+            if sp_col != 0:
+                sp.get_yaxis().set_visible(False)
+        hide_unnecessary_label()
+
+    def top_right_ylabel():
+        """
+            左上のヒストグラムのスケールを変化させずに、軸の表記だけを変更させる。
+        """
+        y_label = [int(f) for f in sp_list[1].get_yticks()]
+        sp_list[0].set_yticks(np.linspace(0, 1, len(y_label)))
+        sp_list[0].set_yticklabels(y_label)
+
+    top_right_ylabel()
+
     return fig
+
+
 
 if __name__ == "__main__":
 
@@ -70,10 +115,13 @@ if __name__ == "__main__":
     # plt.hist([1,2,3])
 
     df = pd.DataFrame([[1, 2, 3, 'f'], [6, 5, 4, 'g'], [7, 8, 9, 'h']], columns=['a', 'b', 'c', 'label'])
-    pairplot(df, hue='label').show()
+    df = pd.DataFrame([[1, None, 3, 'a'], [6, 3, 4, 'b'], [5, None, None, 'c']], columns=['a', 'b', 'c', 'label'])
+    green_to_red = sns.diverging_palette(145, 10, n=3, center="dark")
+    pairplot(df, hue='label', palette=green_to_red).show()
 
     df = sns.load_dataset("iris")
-    df = pd.DataFrame([[1, None, None, 'a'], [None, 3, 4, 'b'], [None, None, None, 'c']], columns=['a', 'b', 'c', 'label'])
     df = pd.DataFrame([[1, 2, 3, 'f'], [6, 5, 4, 'g'], [7, 8, 9, 'h']], columns=['a', 'b', 'c', 'label'])
-    sns.pairplot(df, hue='label', dropna=True)
+    df = pd.DataFrame([[1, None, 3, 'a'], [6, 3, 4, 'b'], [None, 5, None, 'c']], columns=['a', 'b', 'c', 'label'])
+    green_to_red = sns.diverging_palette(145, 10, n=3, center="dark")
+    sns.pairplot(df, hue='label', palette=green_to_red, dropna=True)
     sns.plt.show()
