@@ -39,11 +39,11 @@ def pairplot(df, **kwargs):
             corresp = {label: color for label, color in zip(rm_duplicates(df[labels]), palette)}
             return [corresp[label] for label in df[labels]]
 
-        return df.assign(**{"color": assign_color_to_label}).drop(kwargs["hue"], axis=1)
+        return df.assign(**{"color": assign_color_to_label})
 
     df = prepro(df)
 
-    feature = df.drop("color", axis=1)
+    feature = df.drop("color", axis=1).drop(kwargs["hue"], axis=1)
 
     feature_number = feature.shape[1]
 
@@ -70,18 +70,18 @@ def pairplot(df, **kwargs):
         sp = fig.add_subplot(feature_number, feature_number, i + 1, **kwargs_sp)
         sp_list.append(sp)
 
-        f = df[[fnames[0],fnames[1],"color"]].dropna()
+        f = df[[fnames[0],fnames[1],kwargs["hue"],"color"]].dropna()
 
         def feature_each_label(feature, labels):
             return [feature.as_matrix()[np.where(np.array(labels) == label)[0]] for label in rm_duplicates(labels)]
         if sp_row == sp_col:
             # クソコード
-            sp.hist(feature_each_label(f[fnames[0]], f["color"]), align='left', color=rm_duplicates(f["color"]), stacked=True)
+            sp.hist(feature_each_label(f[fnames[0]], f[kwargs["hue"]]), align='left', color=rm_duplicates(f["color"]), stacked=True)
         else:
             # d=[feature_each_label(feature[fname], labels) for fname in fnames]
             # data = np.array([feature_each_label(feature[fname], labels) for fname in fnames])
             # # nanの行をpaletetと一緒に削除
-            sp.scatter(*[feature_each_label(f[fname], f["color"]) for fname in fnames], color=rm_duplicates(f["color"]))
+            sp.scatter(*[feature_each_label(f[fname], f[kwargs["hue"]]) for fname in fnames], color=rm_duplicates(f["color"]))
 
         def hide_unnecessary_label():
 
