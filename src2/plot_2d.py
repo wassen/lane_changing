@@ -96,7 +96,7 @@ for j,data in enumerate(load_right_divide_9000()):
 
 import seaborn as sns
 plot_data = pd.DataFrame(features, columns=columns)
-plot_data.to_pickle('chinpo')
+plot_data.to_pickle('aaa')
 green_to_red = sns.diverging_palette(145, 10, n=100, center="dark")  # , s=70, l=40, n=3
 ax = sns.pairplot(pd.DataFrame(features, columns=columns), hue="label", palette=green_to_red[first_of_color_palette:])
 ax._legend.remove()
