@@ -8,6 +8,7 @@ import numpy as np
 import ddTools as dT
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
 z = [0]
 green_dot, = plt.plot(z, "go", markersize=3)
 red_dot, = plt.plot(z, "ro", markersize=3)
@@ -31,7 +32,6 @@ def load_right_divide_9000():
 
 features = []
 for j,data in enumerate(load_right_divide_9000()):
-    print(j)
     start_index = dT.start_index(data['roa']['lc'])['right'][0]
     if start_index < 100:
         first_of_array = 0
@@ -89,20 +89,30 @@ for j,data in enumerate(load_right_divide_9000()):
         # print(float('Nan') in feature)
         # print(float('Inf') in feature)
         features.append(feature)
+
+
 # dfdezenbumatomeru
 
 #, dropna=True
 # Noneの点が消えるようになってるが、ヒストグラムのところでバグが出る。
+    pd_list=[]
+    plot_data = pd.DataFrame(features, columns=columns)
 
-import seaborn as sns
-plot_data = pd.DataFrame(features, columns=columns)
-plot_data.to_pickle('aaa')
-green_to_red = sns.diverging_palette(145, 10, n=100, center="dark")  # , s=70, l=40, n=3
-ax = sns.pairplot(pd.DataFrame(features, columns=columns), hue="label", palette=green_to_red[first_of_color_palette:])
-ax._legend.remove()
+    # green_to_red = sns.diverging_palette(145, 10, n=100, center="dark")  # , s=70, l=40, n=3
+    # ax = sns.pairplot(pd.DataFrame(features, columns=columns), hue="label", palette=green_to_red[first_of_color_palette:])
+    # ax._legend.remove()
 
-sns.plt.legend([green_dot, red_dot, ], ['100frame_before', '1frame_before'], bbox_to_anchor=(2, 1))
-ax.savefig('tes')
+    green_to_red = sns.diverging_palette(145, 10, n=100, center="dark")  # , s=70, l=40, n=3
+    pd_list.append(plot_data)
 
-# 自分でpairplot実装しよう。
-# 糞ライブラリに頼った俺がダメだった。
+
+
+# forにしないでもできるだろうけど、colorの指定がめんどくさそう
+# [color for _ in pd_list for color in green_to_red]とかで[g_t_r, g_t_r,...]って並べたらいけるとおもう
+for plot_data in pd_list:
+    plt.scatter(*plot_data[['front_center_distance','front_center_relvy']].as_matrix().T, color=green_to_red)
+plt.show()
+# sns.plt.legend([green_dot, red_dot, ], ['100frame_before', '1frame_before'], bbox_to_anchor=(2, 1))
+# ax.savefig('tes')
+plt.savefig('teiis')
+
