@@ -36,7 +36,7 @@ def __get_cars(sur_row):
 
 def to_eachcar(sur):
     return [__get_cars(sur_row) for sur_row in sur]
-
+# remoteで消えたのなぜ？
 class Label():
     left_lanechanging = -2
     begin_left_lanechange = -1
@@ -77,7 +77,7 @@ class DataType:
     type_name_list = drv, roa, sur
 
 
-class TypeInfo:
+class Info:
     # シングルトンで実装したい。がめんどい
     def __init__(self):
         pass
@@ -93,7 +93,7 @@ class TypeInfo:
         return df
 
 
-class DrvTypeInfo(TypeInfo):
+class DrvInfo(Info):
     type_name = "drv"
     names = ['time', 'brake', 'gas', 'vel', 'steer', 'accX', 'accY', 'accZ']
     drops = ['time', ]
@@ -101,7 +101,7 @@ class DrvTypeInfo(TypeInfo):
     @classmethod
     def get_dataframe_from_csv(cls, drv_path):
 
-        return TypeInfo \
+        return Info \
             .get_dataframe_from_csv(drv_path) \
             .droplatlon() \
             .dropna(axis=1, how="all") \
@@ -109,7 +109,7 @@ class DrvTypeInfo(TypeInfo):
             .drop(cls.drops, axis=1)
 
 
-class RoaTypeInfo(TypeInfo):
+class RoaInfo(Info):
     type_name = "roa"
     names = ['vel', 'host_lane', 'lc', 'host_rad', 'lane_number', 'FRT', 'BRT', 'D_fr(m)',
              'D_fl(m)', 'D_br(m)', 'D_bl(m)', 'Rad_fr(m)', 'CC_frx(m)', 'CC_fry(m)',
@@ -118,17 +118,17 @@ class RoaTypeInfo(TypeInfo):
 
     @classmethod
     def get_dataframe_from_csv(cls, roa_path):
-        return TypeInfo \
+        return Info \
             .get_dataframe_from_csv(roa_path) \
             .rename_columns(cls.names)
 
 
-class SurTypeInfo(TypeInfo):
+class SurInfo(Info):
     type_name = "sur"
     # nameは不定
 
 
-def __get_3paths_from_behavior(behavior, number_dir):
+def __get_3info_from_behavior(behavior, number_dir):
     """
 
     :param behavior f6372nc5 etc:
@@ -140,37 +140,34 @@ def __get_3paths_from_behavior(behavior, number_dir):
     dir = join(number_dir, subject, task)
     return [join(dir, (subject + task + "-" + typename)) for typename in DataType.type_name_list]
 
-
 def __read_csv():
-    global behavior_list, behavior_key_nparrays_value
-    behavior6000_list = subject_task_list(repo_env.DATA_PATH_6000)
-    behavior9000_list = subject_task_list(repo_env.DATA_PATH_9000)
-    behavior_list = subject_task_list(repo_env.DATA_PATH_6000) + subject_task_list(repo_env.DATA_PATH_9000)
-    data_path_list = [repo_env.DATA_PATH_6000 for _ in behavior6000_list] + [repo_env.DATA_PATH_9000 for _ in
-                                                                             behavior9000_list]
-    datapath9000 = [repo_env.DATA_PATH_9000 for _ in behavior9000_list]
-    # 暫定6000番台削除
-    for data_path, behavior in zip(datapath9000, behavior9000_list):
-        three_paths = __get_3paths_from_behavior(behavior, data_path)
-        type_infos = (DrvTypeInfo, RoaTypeInfo, SurTypeInfo)
+    behavior_and_drivingdata = {}
+    behavior_list = subject_task_list(repo_env.DATA_PATH_9000)
+    data_path = repo_env.DATA_PATH_9000
 
-        def dataframe_from_paths_and_typeinfos(three_paths, type_infos):
+    for behavior in behavior_list:
+        three_paths = __get_3info_from_behavior(behavior, data_path)
+        info_list = (DrvInfo, RoaInfo, SurInfo)
+
+        def dataframe_from(three_paths, info_list):
             """
             :param three_paths:
-            :param type_infos:
+            :param info_list:
             :return {'drv':drv_npmat, 'roa':roa_npmat, 'sur':sur_npmat}:
             """
             # dataframes = {type_info.type_name: type_info.get_dataframe_from_csv(path)
-            #         for path, type_info in zip(three_paths, type_infos)}
+            #         for path, type_info in zip(three_paths, info_list)}
             return {type_info.type_name: type_info.get_dataframe_from_csv(path)
-                    for path, type_info in zip(three_paths, type_infos)}
+                    for path, type_info in zip(three_paths, info_list)}
 
         def __equalize_size(df_dict):
-            row_size = min([df_dict[t.type_name].shape[0] for t in type_infos])
-            return {t.type_name:df_dict[t.type_name][:row_size] for t in type_infos}
-        df_dict = dataframe_from_paths_and_typeinfos(three_paths, type_infos)
+            row_size = min([df_dict[t.type_name].shape[0] for t in info_list])
+            return {t.type_name:df_dict[t.type_name][:row_size] for t in info_list}
 
-        behavior_key_nparrays_value[behavior] = __equalize_size(df_dict)
+        df_dict = dataframe_from(three_paths, info_list)
+
+        behavior_and_drivingdata[behavior] = __equalize_size(df_dict)
+    return behavior_list, behavior_and_drivingdata
 
 
 if __name__ == '__main__':
@@ -182,24 +179,8 @@ if __name__ == '__main__':
 else:
     # importするたび読み込んでたら使いにくい。小分けに読み込むとか、読み込むようのメソッド用意するとか。
     print("importing driving_data...")
-    global behavior_list, behavior_key_nparrays_value
-    behavior_list = []
-    behavior_key_nparrays_value = {}
+    global behavior_list, behavior_and_drivingdata
+    behavior_list, behavior_and_drivingdata = __read_csv()
 
-    # 改めてreadcsvしたほうが断然早いが、pypyでやればなんとかなるか
-    # file_path = os.path.join(repo_env.DATA_DIR, '69data.npz')
-
-    # if os.path.exists(file_path):
-    #     load = np.load(file_path)
-    #     behavior_list = load['behavior_list']
-    #     # pypyではここでバグる。dictをシリアライズできないっぽい感じ nijuuhairetudemomuridatta
-    #     behavior_key_nparrays_value = load['behavior_key_nparrays_value']
-    #     load.close()
-    # else:
-    # 後ほど変数に代入する形に変える
-    __read_csv()
-    # np.savez_compressed(file_path,
-    #          behavior_list=behavior_list,
-    #          behavior_key_nparrays_value=behavior_key_nparrays_value)
 
     print('complete importing')

@@ -1,18 +1,75 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import numpy as np
-import sklearn
-from sklearn.cross_validation import train_test_split
-import pandas as pd
-from pandas import DataFrame as DF
-
-import os
-from os.path import join
 import math
-import driving_data as dd
+from os.path import join
+import numpy as np
+import pandas as pd
+import sklearn
+from pandas import DataFrame as DF
+from sklearn.model_selection import train_test_split
+import constants as c
 import repo_env
-import constants as C
+
+front_center = 'front_center'
+rear_right = 'rear_right'
+
+def specific_nearest_car(cars, cartype):
+    half_width = c.LANE_WIDTH / 2.
+    if cartype == 'front_center':
+        def cond(car):
+            # ここの条件はもうちょい考えたほうがいいかも？
+            return -half_width < car[0] < half_width and car[1] > 0
+    elif cartype == 'rear_right':
+        def cond(car):
+            return half_width < car[0] < 3 * half_width and car[1] < 0
+
+    front_cars = filter(cond, cars)
+    front_car = sorted(front_cars, key=lambda x: to_feature(x, Features.Distance))
+    if len(front_car) == 0:
+        return []
+    else:
+        return front_car[0]
+
+
+def next_lc(num, start_index):
+    def min_with_st(ite, st):
+        l = filter(lambda x: x > st, ite)
+        if len(l) == 0:
+            return float("inf")
+        else:
+            return min(l)
+
+    r = min_with_st(start_index['right'], num)
+    l = min_with_st(start_index['left'], num)
+
+    if r < l:
+        return r, 'right'
+    elif l < r:
+        return l, 'left'
+    else:
+        return float('inf'), 'None'
+
+
+def start_index(l):
+    def onetotwo(n):
+        if n == 0:
+            return 0
+        elif n == 1:
+            return 2
+        elif n == -1:
+            return 1
+        else:
+            raise
+
+    l = np.array(l)
+    l = map(onetotwo, l)
+    l = l - np.append(0, l[:-1])
+    if l[0] == 0:
+        l[0] = -10
+    return {'str': list(np.where(l < 0)[0]),
+            'right': list(np.where(l == 2)[0]),
+            'left': list(np.where(l == 1)[0]), }
 
 
 class Features():
@@ -35,7 +92,7 @@ class Features():
     #         return 'deg'
 
 
-def __to_feature(car, feature):
+def to_feature(car, feature):
     x = float(car[0])
     y = float(car[1])
     vx = float(car[2])
@@ -52,15 +109,15 @@ def __to_feature(car, feature):
     def calc_ttc(x, v, a, car_size):
         sols = solve_quad(1. / 2. * a, v, (x - car_size * np.sign(x)))
         if sols[0] > 0 and sols[1] > 0:
-            return min(sols) * 1000. / 3600.
+            return min(sols)
         else:
-            return max(sols) * 1000. / 3600.
+            return max(sols)
 
     def ttcp():
         if vx == 0 and vy == 0:
             return float('inf')
         else:
-            return -(x * vx + y * vy) * 1000 / (vx ** 2 + vy ** 2) / 3600  # km/h*1000/3600 = m/s
+            return -(x * vx + y * vy) / (vx ** 2 + vy ** 2)  # km/h*1000/3600 = m/s
 
     def dtcp():
         if vx == 0 and vy == 0:
@@ -69,7 +126,7 @@ def __to_feature(car, feature):
             return abs(x * vy - y * vx) / math.sqrt(vx ** 2 + vy ** 2)
 
     if feature == 'ttac':
-        if dtcp() < C.CAR_CIRCLE_RADIUS * 2:
+        if dtcp() < c.CAR_CIRCLE_RADIUS * 2:
             return ttcp()
         else:
             return float('inf')
@@ -81,12 +138,12 @@ def __to_feature(car, feature):
     elif feature == "ttcx":
         # TODO NaNが出る問題
         try:
-            return calc_ttc(x, vx, ax, C.CAR_WIDTH)
+            return calc_ttc(x, vx, ax, c.CAR_WIDTH)
         except ValueError:
             return np.float('inf')
     elif feature == "ttcy":
         try:
-            return calc_ttc(y, vy, ay, C.CAR_LENGTH)
+            return calc_ttc(y, vy, ay, c.CAR_LENGTH)
         except ValueError:
             return np.float('inf')
     elif feature == "dist":
@@ -96,7 +153,7 @@ def __to_feature(car, feature):
 
 
 ## TODO driving dataと同じコード。ddのほうは読み込み時間かかって使いにくい。csv読み込みは別にメソッドで用意したほうがいいのかもしれない。
-def __get_cars(sur_row):
+def get_cars(sur_row):
     sur_row = np.array(sur_row)
     cars = sur_row.reshape(int(sur_row.shape[0] / 6), 6).tolist()
     return filter(lambda car: not all([item == 0 for item in car]), cars)
@@ -104,7 +161,7 @@ def __get_cars(sur_row):
 
 ## TODO driving dataと同じコード。ddのほうは読み込み時間かかって使いにくい。csv読み込みは別にメソッドで用意したほうがいいのかもしれない。
 def __to_eachcar_list(sur):
-    return [__get_cars(sur_row) for sur_row in sur]
+    return [get_cars(sur_row) for sur_row in sur]
 
 
 (Front, Center, Rear) = range(3)
@@ -112,7 +169,8 @@ def __to_eachcar_list(sur):
 (Relx, Rely, Relvx, Relvy, Accx, Accy) = range(6)
 
 
-def __add_accel(sur):
+def add_accel(sur):
+    sur = np.array(sur)
     frame_numbers = sur.shape[0]
     car_numbers_mult4 = sur.shape[1]
 
@@ -124,7 +182,7 @@ def __add_accel(sur):
         previous = sur_each_car[0:frame_numbers - 1, Relvx:Relvy + 1]
 
         # 1フレーム目の加速度は[0, 0]
-        accel = np.r_[[[0, 0]], current - previous]
+        accel = np.r_[[[0, 0]], 10 * (current - previous)]
 
         sur_each_car_list_with_accel.append(np.c_[sur_each_car, accel])
 
@@ -137,15 +195,15 @@ def __to_index(car):
     :param car:
     :return:
     """
-    if car[Rely] > C.CAR_LENGTH / 2:
+    if car[Rely] > c.CAR_LENGTH / 2:
         y = Front
-    elif C.CAR_LENGTH / 2 >= car[Rely] >= - (C.CAR_LENGTH / 2):
+    elif c.CAR_LENGTH / 2 >= car[Rely] >= - (c.CAR_LENGTH / 2):
         y = Center
     else:
         y = Rear
-    if car[Relx] > C.CAR_WIDTH / 2:
+    if car[Relx] > c.CAR_WIDTH / 2:
         x = Right
-    elif C.CAR_WIDTH / 2 >= car[Relx] >= -(C.CAR_WIDTH / 2):
+    elif c.CAR_WIDTH / 2 >= car[Relx] >= -(c.CAR_WIDTH / 2):
         x = Center
     else:
         x = Left
@@ -160,7 +218,7 @@ def __sur_feature(sur, feature):
         nine_neighbor = np.ones(9).reshape(3, 3) * np.float('inf')
         for car in each_car:
             y, x = __to_index(car)
-            feature_value = __to_feature(car, feature)
+            feature_value = to_feature(car, feature)
             nine_neighbor[y][x] = feature_value
         afeature.append([math.atan(neigh) for neigh in nine_neighbor.reshape(9)])
     return np.array(afeature)
@@ -171,14 +229,14 @@ def __to_30frames(feature_df, label):
     df_columns = feature_df.columns
     feature_np = feature_df.as_matrix()
 
-    col_num = C.NUM_OF_SEQUENCE * feature_np.shape[1]
-    row_num = feature_np.shape[0] - C.NUM_OF_SEQUENCE + 1
+    col_num = c.NUM_OF_SEQUENCE * feature_np.shape[1]
+    row_num = feature_np.shape[0] - c.NUM_OF_SEQUENCE + 1
 
-    df30 = [feature_np[i:C.NUM_OF_SEQUENCE + i, :][::-1].transpose().reshape(col_num) for i in range(row_num)]
-    label = label[C.NUM_OF_SEQUENCE - 1:]
+    df30 = [feature_np[i:c.NUM_OF_SEQUENCE + i, :][::-1].transpose().reshape(col_num) for i in range(row_num)]
+    label = label[c.NUM_OF_SEQUENCE - 1:]
 
     df30_columns = ['{0}_{1}frames_before'.format(df_column, i) for df_column in df_columns for i in
-                    range(C.NUM_OF_SEQUENCE)]
+                    range(c.NUM_OF_SEQUENCE)]
 
     return DF(df30, columns=df30_columns), label
 
@@ -215,8 +273,8 @@ def __shift_pred_frames(feature_df, lc_ser):
     df_columns = feature_df.columns
     df_as_np = feature_df
 
-    lc_ser = lc_ser[C.PRED_FRAME:]
-    df_as_np = df_as_np[:-1 * C.PRED_FRAME]
+    lc_ser = lc_ser[c.PRED_FRAME:]
+    df_as_np = df_as_np[:-1 * c.PRED_FRAME]
 
     return DF(df_as_np, columns=df_columns), lc_ser
 
@@ -228,17 +286,18 @@ if __name__ == '__main__':
 
     label_list = []
     feature_list = []
-    for i, df in enumerate(dd.behavior_key_nparrays_value.values()):
+    for i, df in enumerate(dd.behavior_and_drivingdata.values()):
         start = time.time()
         print(i)
-        sur = __add_accel(df['sur'].as_matrix())
-
+        sur = add_accel(df['sur'].as_matrix())
 
         drv_df = df['drv'][:][['brake', 'gas', 'vel', 'steer']]
 
         # クソコード
-        hl = pd.Series(np.float('NaN') if item == 'Null' else float(item)for item in df['roa']['host_lane']).interpolate()
-        ln = pd.Series(np.float('NaN') if item == 'Null' else float(item)for item in df['roa']['lane_number']).interpolate()
+        hl = pd.Series(
+            np.float('NaN') if item == 'Null' else float(item) for item in df['roa']['host_lane']).interpolate()
+        ln = pd.Series(
+            np.float('NaN') if item == 'Null' else float(item) for item in df['roa']['lane_number']).interpolate()
         roa_df = pd.DataFrame([hl, ln]).transpose()
 
         feature_name = Features.TimeToCollisionX
@@ -251,7 +310,9 @@ if __name__ == '__main__':
         print(time.time() - start)
 
         sur_feature_df = DF(sur_feature, columns=columns)
-        #feature_df = pd.concat([drv_df, roa_df, sur_feature_df], axis=1, join='inner')
+
+
+        # feature_df = pd.concat([drv_df, roa_df, sur_feature_df], axis=1, join='inner')
 
         # kusoko-dohajimari
         def __relv(sur):
@@ -300,7 +361,7 @@ if __name__ == '__main__':
     #                       [1, 3, 4, 2, 1, 1, 4, 4, 4, 5, 1, 1]]).as_matrix())
     print('ほんとにおしまい')
 
-    np.savez_compressed(join(repo_env.DATA_DIR,'X'), X=X)
+    np.savez_compressed(join(repo_env.DATA_DIR, 'X'), X=X)
 
     l = f_train, f_test, l_train, l_test = train_test_split(X, Y, test_size=0.25, train_size=0.75)
 
@@ -315,17 +376,17 @@ if __name__ == '__main__':
     print(any(np.isnan(np.array(l_test).reshape(l_test.size))))
     print([np.float('inf') in a for a in l])
 
-
     # 1のクラス数に合わせる、拡張して、全てのクラスのminを計算したい
     fv_train_1 = f_train[l_train == 1]
     fv_train_m1 = f_train[l_train == -1]
     sample = min(fv_train_1.shape[0], fv_train_m1.shape[0])
 
     fv_train_1 = f_train[l_train == 1][:sample, :]
-    fv_train_0 = f_train[l_train == 0][:sample*5, :]
+    fv_train_0 = f_train[l_train == 0][:sample * 5, :]
     fv_train_m1 = f_train[l_train == -1][:sample, :]
     f_train = np.r_[fv_train_m1, fv_train_0, fv_train_1]
     l_train = np.r_[np.ones(sample) * -1, np.zeros(sample * 5), np.ones(sample)]
+
 
     def normalize(train, test):
         scaler = sklearn.preprocessing.MinMaxScaler()

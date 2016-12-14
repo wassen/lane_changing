@@ -223,8 +223,8 @@ if __name__ == '__main__':
 
     import time
 
-    keys = dd.behavior_key_nparrays_value.keys()
-    values = dd.behavior_key_nparrays_value.values()
+    keys = dd.behavior_and_drivingdata.keys()
+    values = dd.behavior_and_drivingdata.values()
     rows = []
     for key, df in zip(keys, values):
         sur = __add_accel(df['sur'].as_matrix())

@@ -14,9 +14,10 @@
 
 ### How do I get set up?
 
-
 * Summary of set up
-$ git clone これ  
+```
+$ git clone https://github.com/wassen/lane_changing.git  
+// $ pyenv install miniconda2-latest
 $ source activate  
 $ pip install -U pip  
 $ pip install pyvenv  
@@ -26,6 +27,7 @@ $ pip install wheelhouse/*
 $ pip install -r requirements  
 $ mkdir data  
 $ mv どこかにあるデータ data/  
+```
 多分こんな感じで
 
 * Configuration

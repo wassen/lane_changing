@@ -43,5 +43,5 @@ for kind in ls_in_9000:
         print("変換が終了したか、DS_Storeや一時ファイルが紛れ込んでいる可能性があります。")
         exit()
 
-shutil.move(repo_env.DATA_PATH_9000, join(repo_env.DATA_DIR, "9000_old"))
+shutil.move(repo_env.DATA_PATH_9000, repo_env.OLD_9000_DIR)
 shutil.move(mod_dir, repo_env.DATA_PATH_9000)
