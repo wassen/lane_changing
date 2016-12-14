@@ -9,6 +9,7 @@ import ddTools as dT
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from itertools import combinations
 z = [0]
 green_dot, = plt.plot(z, "go", markersize=3)
 red_dot, = plt.plot(z, "ro", markersize=3)
@@ -16,6 +17,10 @@ red_dot, = plt.plot(z, "ro", markersize=3)
 plt.close()
 
 types = ('drv', 'roa', 'sur')
+columns = ['label',
+           'gas', 'brake', 'steer',
+           'front_center_distance','front_center_relvy', 'front_center_ttcy',
+           'rear_right_distance', 'rear_right_relvy', 'rear_right_ttcy']
 
 
 def load_right_divide_9000():
@@ -44,13 +49,10 @@ for j,data in enumerate(load_right_divide_9000()):
     roa_10_sec = data['roa'][first_of_array:start_index]
     sur_10_sec = dT.add_accel(data['sur'][first_of_array:start_index])
 
-    columns = ['label',
-               'gas', 'brake', 'steer',
-               'front_center_distance','front_center_relvy', 'front_center_ttcy',
-               'rear_right_distance', 'rear_right_relvy', 'rear_right_ttcy']
 
     for i, (drv, roa, sur) in enumerate(zip(drv_10_sec.iterrows(),roa_10_sec.iterrows(),sur_10_sec)):
-        # print(i)
+
+        #print(i)
         feature = []
         drv=drv[1]
 
@@ -109,8 +111,18 @@ for j,data in enumerate(load_right_divide_9000()):
 
 # forにしないでもできるだろうけど、colorの指定がめんどくさそう
 # [color for _ in pd_list for color in green_to_red]とかで[g_t_r, g_t_r,...]って並べたらいけるとおもう
+coms = combinations(columns[1:], 2)
 for plot_data in pd_list:
-    plt.scatter(*plot_data[['front_center_distance','front_center_relvy']].as_matrix().T, color=green_to_red)
+    for com in coms:
+        f0 = columns.index(com[0])
+        f1 = columns.index(com[1])
+        plt.scatter(*plot_data[[f0,f1]].as_matrix().T, color=green_to_red)
+        plt.xlabel(com[0])
+        plt.ylabel(com[1])
+        repo_env.make_dirs("out", exist_ok=True)
+        plt.savefig(repo_env.path("out","{}_{}.png".format(com[0], com[1])))
+        plt.close()
+
 plt.show()
 # sns.plt.legend([green_dot, red_dot, ], ['100frame_before', '1frame_before'], bbox_to_anchor=(2, 1))
 # ax.savefig('tes')

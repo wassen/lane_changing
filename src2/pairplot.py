@@ -121,7 +121,7 @@ if __name__ == "__main__":
 
     df = sns.load_dataset("iris")
     df = pd.DataFrame([[1, 2, 3, 'f'], [6, 5, 4, 'g'], [7, 8, 9, 'h']], columns=['a', 'b', 'c', 'label'])
-    df = pd.DataFrame([[1, None, 3, 'a'], [6, 3, 4, 'b'], [None, 5, None, 'c']], columns=['a', 'b', 'c', 'label'])
+    df = pd.DataFrame([[1, None, 3, 'a'], [6, 3, 4, 'b'], [5, None, None, 'c']], columns=['a', 'b', 'c', 'label'])
     green_to_red = sns.diverging_palette(145, 10, n=3, center="dark")
     sns.pairplot(df, hue='label', palette=green_to_red, dropna=True)
     sns.plt.show()
