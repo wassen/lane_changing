@@ -16,19 +16,13 @@
 
 * Summary of set up
 ```
-$ git clone https://github.com/wassen/lane_changing.git  
-// $ pyenv install miniconda2-latest
-$ source activate  
 $ pip install -U pip  
-$ pip install pyvenv  
-$ virtualenv .virtualenv  
-$ source activate  
 $ pip install wheelhouse/*  
-$ pip install -r requirements  
+$ pip install -r requirement_2  
+$ pip install -r requirement_3  
 $ mkdir data  
 $ mv どこかにあるデータ data/  
 ```
-多分こんな感じで
 
 * Configuration
 * Dependencies
