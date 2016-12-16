@@ -106,32 +106,32 @@ pd.to_pickle(pd_list, 'tes')
 # forにしないでもできるだろうけど、colorの指定がめんどくさそう
 # [color for _ in pd_list for color in green_to_red]とかで[g_t_r, g_t_r,...]って並べたらいけるとおもう
 coms = combinations(columns[1:], 2)
-for com in coms:
-    for plot_data in pd_list:
-        f0 = columns.index(com[0])
-        f1 = columns.index(com[1])
-        plot_features = plot_data[[f0, f1]].as_matrix().T
-        print(plot_features.shape)
-        plt.scatter(*plot_features, color=green_to_red[- plot_features.shape[1]:])
-        print('a')
+# for com in coms:
+#     for plot_data in pd_list:
+#         f0 = columns.index(com[0])
+#         f1 = columns.index(com[1])
+#         plot_features = plot_data[[f0, f1]].as_matrix().T
+#         print(plot_features.shape)
+#         plt.scatter(*plot_features, color=green_to_red[- plot_features.shape[1]:])
+#         print('a')
+#
+#         plt.xlabel(com[0])
+#         plt.ylabel(com[1])
+#         repo_env.make_dirs("out", exist_ok=True)
+#     plt.savefig(repo_env.path("out","scatter_{}_{}.png".format(com[0], com[1])))
+#     plt.close()
 
-        plt.xlabel(com[0])
-        plt.ylabel(com[1])
-        repo_env.make_dirs("out", exist_ok=True)
-    plt.savefig(repo_env.path("out","scatter_{}_{}.png".format(com[0], com[1])))
-    plt.close()
-
+repo_env.make_dirs("out", exist_ok=True)
 for col in columns[1:]:
-    for plot_data in pd_list:
+    print(col)
+    print(len(pd_list))
+    for i, plot_data in enumerate(pd_list):
+        print(i)
         pd_non_na = plot_data[col].dropna()
         if pd_non_na.as_matrix().T.shape[0] == 0:
             continue
-        print(pd_non_na.as_matrix().T.shape)
         plt.hist([[item] for item in pd_non_na.as_matrix().T], color=green_to_red[- pd_non_na.as_matrix().T.shape[0]:])
-        print('b')
-
-        plt.xlabel(col)
-        repo_env.make_dirs("out", exist_ok=True)
+    plt.xlabel(col)
     plt.savefig(repo_env.path("out","hist_{}.png".format(col)))
     plt.close()
 
