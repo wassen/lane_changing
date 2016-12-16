@@ -10,18 +10,14 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from itertools import combinations
-z = [0]
-green_dot, = plt.plot(z, "go", markersize=3)
-red_dot, = plt.plot(z, "ro", markersize=3)
-# plt.clf()
-plt.close()
+
 
 types = ('drv', 'roa', 'sur')
 columns = ['label',
            'gas', 'brake', 'steer',
            'front_center_distance','front_center_relvy', 'front_center_ttcy',
            'rear_right_distance', 'rear_right_relvy', 'rear_right_ttcy']
-
+green_to_red = sns.diverging_palette(145, 10, n=100, center="dark")  # , s=70, l=40, n=3
 
 def load_right_divide_9000():
 
@@ -35,8 +31,9 @@ def load_right_divide_9000():
                 l.append({tYpe: load(behavior, lc_series_num, tYpe) for tYpe in types})
     return l
 
-features = []
+pd_list=[]
 for j,data in enumerate(load_right_divide_9000()):
+
     start_index = dT.start_index(data['roa']['lc'])['right'][0]
     if start_index < 100:
         first_of_array = 0
@@ -49,7 +46,7 @@ for j,data in enumerate(load_right_divide_9000()):
     roa_10_sec = data['roa'][first_of_array:start_index]
     sur_10_sec = dT.add_accel(data['sur'][first_of_array:start_index])
 
-
+    features = []
     for i, (drv, roa, sur) in enumerate(zip(drv_10_sec.iterrows(),roa_10_sec.iterrows(),sur_10_sec)):
 
         #print(i)
@@ -92,39 +89,60 @@ for j,data in enumerate(load_right_divide_9000()):
         # print(float('Inf') in feature)
         features.append(feature)
 
-
 # dfdezenbumatomeru
 
 #, dropna=True
 # Noneの点が消えるようになってるが、ヒストグラムのところでバグが出る。
-    pd_list=[]
-    plot_data = pd.DataFrame(features, columns=columns)
 
+    plot_data = pd.DataFrame(features, columns=columns)
+    del(features)
     # green_to_red = sns.diverging_palette(145, 10, n=100, center="dark")  # , s=70, l=40, n=3
     # ax = sns.pairplot(pd.DataFrame(features, columns=columns), hue="label", palette=green_to_red[first_of_color_palette:])
     # ax._legend.remove()
-
-    green_to_red = sns.diverging_palette(145, 10, n=100, center="dark")  # , s=70, l=40, n=3
     pd_list.append(plot_data)
 
-
+pd.to_pickle(pd_list, 'tes')
 
 # forにしないでもできるだろうけど、colorの指定がめんどくさそう
 # [color for _ in pd_list for color in green_to_red]とかで[g_t_r, g_t_r,...]って並べたらいけるとおもう
 coms = combinations(columns[1:], 2)
-for plot_data in pd_list:
-    for com in coms:
+for com in coms:
+    for plot_data in pd_list:
         f0 = columns.index(com[0])
         f1 = columns.index(com[1])
-        plt.scatter(*plot_data[[f0,f1]].as_matrix().T, color=green_to_red)
+        plot_features = plot_data[[f0, f1]].as_matrix().T
+        print(plot_features.shape)
+        plt.scatter(*plot_features, color=green_to_red[- plot_features.shape[1]:])
+        print('a')
+
         plt.xlabel(com[0])
         plt.ylabel(com[1])
         repo_env.make_dirs("out", exist_ok=True)
-        plt.savefig(repo_env.path("out","{}_{}.png".format(com[0], com[1])))
-        plt.close()
+    plt.savefig(repo_env.path("out","scatter_{}_{}.png".format(com[0], com[1])))
+    plt.close()
+
+for col in columns[1:]:
+    for plot_data in pd_list:
+        pd_non_na = plot_data[col].dropna()
+        if pd_non_na.as_matrix().T.shape[0] == 0:
+            continue
+        print(pd_non_na.as_matrix().T.shape)
+        plt.hist([[item] for item in pd_non_na.as_matrix().T], color=green_to_red[- pd_non_na.as_matrix().T.shape[0]:])
+        print('b')
+
+        plt.xlabel(col)
+        repo_env.make_dirs("out", exist_ok=True)
+    plt.savefig(repo_env.path("out","hist_{}.png".format(col)))
+    plt.close()
 
 plt.show()
+
+# z = [0]
+# green_dot, = plt.plot(z, "go", markersize=3)
+# red_dot, = plt.plot(z, "ro", markersize=3)
+# plt.close()
 # sns.plt.legend([green_dot, red_dot, ], ['100frame_before', '1frame_before'], bbox_to_anchor=(2, 1))
 # ax.savefig('tes')
 plt.savefig('teiis')
 
+# seabornでエラー出るの、全部Nanのデータがあるからか？いや、全系列まとめてるから全部がNanってことはないと思うんだけど・・・
