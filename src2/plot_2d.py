@@ -127,7 +127,7 @@ pd.to_pickle(pd_list, 'tes')
 # # きょりと相対速度を位置車線変更ごとに個別
 
 col1 = 'front_center_distance'
-col2 = 'front_center_relvy'
+col2 = 'rear_right_ittc_2ndy'
 
 col1_all_data = [val for plot_data in pd_list for val in plot_data[col1] if not val is None ]
 col2_all_data = [val for plot_data in pd_list for val in plot_data[col2] if not val is None]
@@ -144,41 +144,42 @@ min2,
 )
 
 
-# for i, plot_data in enumerate(pd_list):
-#     plot_features = plot_data[[col1, col2]].as_matrix().T
-#     print(plot_features.shape)
-#     plt.scatter(*plot_features, color=green_to_red[- plot_features.shape[1]:])
-#     print('a')
-#     # plt.xlim(min1, max1)
-#     # plt.ylim(min2, max2)
-#     plt.xlabel(col1)
-#     plt.ylabel(col2)
-#     repo_env.make_dirs("out", "{}_{}".format(col1, col2,), exist_ok=True)
-#     # nameに汎用性を
-#     plt.savefig(repo_env.path("out", "{}_{}".format(col1, col2,), "scatter_{}.png".format(i, )))
-#     plt.close()
-
-# 3d
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
-repo_env.make_dirs("out", "3d", "{}_{}".format(col1, col2,), exist_ok=True)
-
 for i, plot_data in enumerate(pd_list):
-    z = [int(label_str[:label_str.find('f')]) for label_str in plot_data['label']]
-    x, y = plot_features = plot_data[[col1, col2]].as_matrix().T
-    x, y, z = pd.DataFrame([x,y,z]).T.dropna().as_matrix().T
-    # ax = fig.add_subplot(111, projection='3d')
-    ax.plot(x, y, z, alpha=0.3, linewidth=0.5)
+    plot_features = plot_data[[col1, col2]].as_matrix().T
+    print(plot_features.shape)
+    plt.scatter(*plot_features, color=green_to_red[- plot_features.shape[1]:])
+    print('a')
     # plt.xlim(min1, max1)
     # plt.ylim(min2, max2)
-    # plt.xlabel(col1)
-    # plt.ylabel(col2)
-    # fig.savefig(repo_env.path("out", "3d", "{}_{}".format(col1, col2,), "{}.png".format(i)))
-    # fig.delaxes(ax)
-# fig.savefig(repo_env.path("out", "3d", "{}_{}".format(col1, col2,)))
-plt.show()
+    plt.xlabel(col1)
+    plt.ylabel(col2)
+    repo_env.make_dirs("out", "{}_{}".format(col1, col2,), exist_ok=True)
+    # nameに汎用性を
+    plt.savefig(repo_env.path("out", "{}_{}".format(col1, col2,), "scatter_{}.png".format(i, )))
+    plt.close()
+
+# 3d
+# import matplotlib.pyplot as plt
+# from mpl_toolkits.mplot3d import Axes3D
+# fig = plt.figure()
+# ax = fig.add_subplot(111, projection='3d')
+# repo_env.make_dirs("out", "3d", "{}_{}".format(col1, col2,), exist_ok=True)
+#
+# for i, plot_data in enumerate(pd_list):
+#     z = [int(label_str[:label_str.find('f')]) for label_str in plot_data['label']]
+#     x, y = plot_features = plot_data[[col1, col2]].as_matrix().T
+#     x, y, z = pd.DataFrame([x,y,z]).T.dropna().as_matrix().T
+#     # ax = fig.add_subplot(111, projection='3d')
+#     ax.plot(x, y, z, alpha=0.3, linewidth=0.5)
+#     # plt.xlim(min1, max1)
+#     # plt.ylim(min2, max2)
+#     # plt.xlabel(col1)
+#     # plt.ylabel(col2)
+#     # fig.savefig(repo_env.path("out", "3d", "{}_{}".format(col1, col2,), "{}.png".format(i)))
+#     # fig.delaxes(ax)
+# # fig.savefig(repo_env.path("out", "3d", "{}_{}".format(col1, col2,)))
+# plt.show()
+
 # def to_hist_data(df_list, col):
 #     number = 100
 #     b = [[] for _ in range(number)]
