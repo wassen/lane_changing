@@ -9,3 +9,4 @@ lane_changing.pyc
 *.pyc
 *.avi
 src2/lc2
+data/
