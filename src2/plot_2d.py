@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import progressbar
 import seaborn as sns
-
+import numpy as np
 import ddTools as dT
 import repo_env
 
@@ -21,6 +21,38 @@ columns = ('label',
            'front_center_distance', 'front_center_relvy', 'front_center_ittc_2ndy',
            'rear_right_distance', 'rear_right_relvy', 'rear_right_ittc_2ndy')
 
+
+class ExtMatrix(np.matrix):
+    def __init__(self, matrix):
+        np.matrix.__init__(matrix)
+        self._det = None
+        self._eig = None
+
+    def __geteig(self):
+        if self._eig is None:
+            self._eig = np.linalg.eig(self)
+        return self._eig
+
+    def __seteig(self, value):
+        raise
+
+    def __deleig(self):
+        del self._eig
+
+    eig = property(__geteig, __seteig, __deleig)
+
+    def __getdet(self):
+        if self._det is None:
+            self._det = np.linalg.det(self)
+        return self._det
+
+    def __setdet(self, value):
+        raise
+
+    def __deldet(self):
+        del self._det
+
+    det = property(__getdet, __setdet, __deldet)
 
 
 def __load_data_list():
@@ -115,17 +147,28 @@ def get_feature_combinations():
     return combinations(columns[1:], 2)
 
 
+def get_lims(x_sample_name, y_sample_name):
+    x_all_samples = [val for data in data_list for val in data[x_sample_name] if val is not None]
+    y_all_samples = [val for data in data_list for val in data[y_sample_name] if val is not None]
+
+    xlims = (min(x_all_samples), max(x_all_samples))
+    ylims = (min(y_all_samples), max(y_all_samples))
+
+    return xlims, ylims
+
+
+def get_lims2(data_list2):
+    x_all_samples = [val for data in data_list2 for val in data.ix[:, 0] if val is not None]
+    y_all_samples = [val for data in data_list2 for val in data.ix[:, 1] if val is not None]
+
+    xlims = (min(x_all_samples), max(x_all_samples))
+    ylims = (min(y_all_samples), max(y_all_samples))
+
+    return xlims, ylims
+
+
 def scatter_each_behavior(x_sample_name, y_sample_name):
-    def get_lims():
-        x_all_samples = [val for data in data_list for val in data[x_sample_name] if val is not None]
-        y_all_samples = [val for data in data_list for val in data[y_sample_name] if val is not None]
-
-        xlims = (min(x_all_samples), max(x_all_samples))
-        ylims = (min(y_all_samples), max(y_all_samples))
-
-        return xlims, ylims
-
-    xlims, ylims = get_lims()
+    xlims, ylims = get_lims(x_sample_name, y_sample_name)
 
     fig = plt.figure()
 
@@ -155,25 +198,126 @@ def scatter_each_behavior(x_sample_name, y_sample_name):
     plt.close()
 
 
+def scatter_each_behavior2(data_list2):
+    xlims, ylims = get_lims2(data_list2)
+
+    fig = plt.figure()
+
+    x_name = data_list2[0].columns[0]
+    y_name = data_list2[0].columns[1]
+
+    repo_env.make_dirs("out", "{}_{}".format(x_name, y_name), exist_ok=True)
+
+    bar = progressbar.ProgressBar(widgets=[
+        ' [', progressbar.Timer(), '] ',
+        progressbar.Bar(),
+        progressbar.Counter(),
+        ' (', progressbar.ETA(), ') ',
+    ])
+
+    for i, plot_data in enumerate(bar(data_list2)):
+        ax = fig.add_subplot(1, 1, 1)
+
+        plot_samples = plot_data.as_matrix().T
+        ax.scatter(*plot_samples, color=green_to_red2)
+
+        # ax.set_xlim(*xlims)
+        # ax.set_ylim(*ylims)
+
+        ax.set_xlabel(x_name)
+        ax.set_ylabel(y_name)
+
+        fig.savefig(repo_env.path("out", "{}_{}".format(x_name, y_name), "scatter_{}.png".format(i, )))
+        fig.clf()
+    plt.close()
+
+
 def scatter_all_behavior(x_sample_name, y_sample_name):
+    xlims, ylims = get_lims(x_sample_name, y_sample_name)
     # forにしないでもできるだろうけど、colorの指定がめんどくさそう
     # [color for _ in pd_list for color in green_to_red]とかで[g_t_r, g_t_r,...]って並べたらいけるとおもう
 
     fig = plt.figure()
 
     repo_env.make_dirs("out", "all", exist_ok=True)
+    filtered_data_list = filter(
+        lambda plot_data: plot_data[[x_sample_name, y_sample_name]].dropna().shape[0] == 100,
+        data_list)
 
-    for plot_data in data_list:
+    data_panel = pd.Panel({i: d for i, d in enumerate(filtered_data_list)})
+    data_panel = data_panel.transpose(1, 0, 2)
+    for i, color in zip(data_panel, green_to_red):
+        if i % 5 != 0:
+            continue
         ax = fig.add_subplot(1, 1, 1)
 
-        plot_samples = plot_data[[x_sample_name, y_sample_name]].as_matrix().T
-        ax.scatter(*plot_samples, color=green_to_red[-plot_samples.shape[1]:])
+        plot_data = data_panel[i][[x_sample_name, y_sample_name]]
+        ax.scatter(*plot_data.as_matrix().T, s=10, alpha=0.5, color=color)
 
         ax.set_xlabel(x_sample_name)
         ax.set_ylabel(y_sample_name)
+    ax.set_xlim(*xlims)
+    ax.set_ylim(*ylims)
 
     plt.savefig(repo_env.path("out", "all", "scatter_{}_{}.png".format(x_sample_name, y_sample_name)))
     plt.close()
+
+
+# データを受け取ったとき用 本来こっちの形のほうがいいのでは？
+def scatter_all_behavior2(data_list2):
+    xlims, ylims = get_lims2(data_list2)
+    # forにしないでもできるだろうけど、colorの指定がめんどくさそう
+    # [color for _ in pd_list for color in green_to_red]とかで[g_t_r, g_t_r,...]って並べたらいけるとおもう
+
+    x_name = data_list2[0].columns[0]
+    y_name = data_list2[0].columns[1]
+
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+
+    repo_env.make_dirs("out", "all", exist_ok=True)
+
+    data_3d_array = np.array([data.as_matrix() for data in data_list2])
+    data_array_each_time = data_3d_array.transpose(1, 0, 2)
+    for data, color in zip(data_array_each_time, green_to_red2):
+        # plot_samples = plot_data.as_matrix().T
+        # ax.scatter(*plot_samples, color=green_to_red2)
+
+        ax.scatter(*data.T, s=10, alpha=0.5, color=color)
+
+    ax.set_xlabel(x_name)
+    ax.set_ylabel(y_name)
+    ax.set_xlim(-5, 5)
+    ax.set_ylim(-5, 5)
+
+    plt.savefig(repo_env.path("out", "all", "scatter_{}_{}.png".format(x_name, y_name)))
+    plt.close()
+
+
+def scatter_each_time(x_sample_name, y_sample_name):
+    xlims, ylims = get_lims(x_sample_name, y_sample_name)
+    fig = plt.figure()
+
+    filtered_data_list = filter(
+        lambda plot_data: plot_data[[x_sample_name, y_sample_name]].dropna().shape[0] == 100,
+        data_list)
+
+    data_panel = pd.Panel({i: d for i, d in enumerate(filtered_data_list)})
+    data_panel = data_panel.transpose(1, 0, 2)
+    for i, color in zip(data_panel, green_to_red):
+        ax = fig.add_subplot(1, 1, 1)
+        if i % 5 != 0:
+            continue
+        plot_data = data_panel[i][[x_sample_name, y_sample_name]]
+        print(plot_data.shape)
+        ax.scatter(*plot_data.as_matrix().T, color=color)
+        ax.set_xlim(*xlims)
+        ax.set_ylim(*ylims)
+        ax.set_title("{}sec_before".format((100 - i) / 10.))
+        ax.set_xlabel(x_sample_name)
+        ax.set_ylabel(y_sample_name)
+        fig.savefig("{}.png".format(i))
+        fig.clf()
 
 
 def scatter_animation(x_sample_name, y_sample_name):
@@ -226,6 +370,78 @@ def scatter_animation(x_sample_name, y_sample_name):
     ani.save('a.gif', writer="imagemagick", fps=10)
     plt.show()
 
+
+from matplotlib.patches import Ellipse
+
+
+# scatter aniumationとかぶってる
+def contours(x_sample_name, y_sample_name):
+    fig = plt.figure()
+
+    # 100フレーム揃ってるやつだけ抽出。意図せず外れてしまっているやつを直したい。
+    filtered_data_list = filter(lambda plot_data: plot_data[[x_sample_name, y_sample_name]].dropna().shape[0] == 100,
+                                data_list)
+    print(len(filtered_data_list))
+    import numpy as np
+
+    ax = fig.add_subplot(1, 1, 1)
+    xlims, ylims = get_lims(x_sample_name, y_sample_name)
+
+    delta = 0.025
+    # x = np.arange(start=xlims[0], stop=xlims[1], step=delta)
+    # y = np.arange(start=ylims[0], stop=ylims[1], step=delta)
+    x = np.arange(start=20, stop=80, step=delta)
+    y = np.arange(start=-5, stop=5, step=delta)
+    X, Y = np.meshgrid(x, y)
+    from matplotlib import mlab
+    from math import sqrt
+
+    data_panel = pd.Panel({i: d for i, d in enumerate(filtered_data_list)})
+    data_panel = data_panel.transpose(1, 0, 2)
+    for i, color in zip(data_panel, green_to_red):
+        if i % 5 != 0:
+            continue
+        print(i)
+        plot_data = data_panel[i]
+        m = np.mean(plot_data[[x_sample_name, y_sample_name]], axis=0)
+        cov = np.cov(plot_data[[x_sample_name, y_sample_name]], rowvar=False)
+
+        # print("mean={},cov={}".format(m, cov))
+
+        def sigma_from(cov):
+            return sqrt(cov[0][0]), sqrt(cov[1][1]), cov[0][1]
+
+        mux, muy = m
+        sigmax, sigmay, sigmaxy = sigma_from(cov)
+        Z = mlab.bivariate_normal(X, Y, mux=mux, muy=muy, sigmax=sigmax, sigmay=sigmay, sigmaxy=sigmaxy)
+        print(cov)
+        # levels = [0.003]
+        # CS = ax.contour(X, Y, Z, levels=levels, alpha=1, linewidth=0.5, colors=[color for _ in levels])
+        # CS.clabel(fontsize=9, inline=1)
+
+        # クソ
+        cov = np.array(cov, dtype=float)
+        cov = ExtMatrix(cov)
+        # 固有ベクトルの一行一列がcos\thetaになんのか・・・
+        eig_val, eig_vec = cov.eig
+        # array->mat->arrayでややこしいんやけど
+        eig_vec = np.array(eig_vec)
+
+        def angle(v):
+            first_vec = v[:, 0]
+            return np.rad2deg(np.arctan(first_vec[1] / first_vec[0]))
+
+        ell = Ellipse(xy=m, width=sqrt(eig_val[0] * 2 * 2), height=sqrt(eig_val[1] * 2 * 2), angle=angle(eig_vec),
+                      alpha=1, edgecolor=color, fill=False, linewidth=2)
+        ax.add_patch(ell)
+        # 色をもとから２０分割にしたい
+
+        ax.set_xlabel(x_sample_name)
+        ax.set_ylabel(y_sample_name)
+
+    # fig.savefig(repo_env.path("out", "{}_{}".format(x_sample_name, y_sample_name, ), "scatter_{}.png".format(i, )))
+    ax.autoscale()
+    plt.show()
 
 
 # repo_env.make_dirs("out", exist_ok=True)
@@ -289,11 +505,12 @@ def scatter_animation(x_sample_name, y_sample_name):
 # # plt.savefig('teiis')
 # #
 # # seabornでエラー出るの、全部Nanのデータがあるからか？いや、全系列まとめてるから全部がNanってことはないと思うんだけど・・・
-#
+
 
 if __name__ == "__main__":
     pass
 else:
     global data_list, green_to_red
-    data_list = list(__load_data_list())
-    green_to_red = sns.diverging_palette(145, 10, n=100, center="dark")# , s=70, l=40, n=3
+    # data_list = list(__load_data_list())
+    green_to_red = sns.diverging_palette(145, 10, n=100, center="dark")  # , s=70, l=40, n=3
+    green_to_red2 = sns.diverging_palette(145, 10, n=20, center="dark")  # , s=70, l=40, n=3

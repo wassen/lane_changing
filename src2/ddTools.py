@@ -10,9 +10,16 @@ from pandas import DataFrame as DF
 from sklearn.model_selection import train_test_split
 import constants as c
 import repo_env
+from os import listdir as ls
 
 front_center = 'front_center'
 rear_right = 'rear_right'
+types = ('drv', 'roa', 'sur')
+columns = ('label',
+           'gas', 'brake', 'steer',
+           'front_center_distance', 'front_center_relvy', 'front_center_ittc_2ndy',
+           'rear_right_distance', 'rear_right_relvy', 'rear_right_ittc_2ndy')
+
 
 def specific_nearest_car(cars, cartype):
     half_width = c.LANE_WIDTH / 2.
@@ -277,6 +284,95 @@ def __shift_pred_frames(feature_df, lc_ser):
     df_as_np = df_as_np[:-1 * c.PRED_FRAME]
 
     return DF(df_as_np, columns=df_columns), lc_ser
+
+
+## plot2dより新しい版
+def load_each_lc(deci_second):
+    def load_right_divide_9000():
+
+        def load(behavior, lc_series_num, type):
+            return pd.read_pickle(join(repo_env.DATA_DIR, 'divide_9000', behavior, 'right', lc_series_num, type))
+
+        type_df_dict_list = []
+        for behavior in sorted(ls(join(repo_env.DATA_DIR, 'divide_9000'))):
+            for lc_series_num in sorted(ls(join(repo_env.DATA_DIR, 'divide_9000', behavior, 'right'))):
+                type_df_dict_list.append({tYpe: load(behavior, lc_series_num, tYpe) for tYpe in types})
+        return type_df_dict_list
+
+    for j, type_df_dict in enumerate(load_right_divide_9000()):
+        start_i = start_index(type_df_dict['roa']['lc'])['right'][0]
+        if start_i < deci_second:
+            first_of_array = 0
+        else:
+            first_of_array = start_i - deci_second
+
+        drv_10_sec = type_df_dict['drv'][first_of_array:start_i]
+        roa_10_sec = type_df_dict['roa'][first_of_array:start_i]
+        sur_10_sec = add_accel(type_df_dict['sur'][first_of_array:start_i])
+        length = len(drv_10_sec)
+        features = []
+        for i, (drv, roa, sur) in enumerate(zip(drv_10_sec.iterrows(), roa_10_sec.iterrows(), sur_10_sec)):
+
+            # print(i)
+            feature = []
+            drv = drv[1]
+
+            cars = get_cars(sur)
+            f_c_car = specific_nearest_car(cars, front_center)
+            r_r_car = specific_nearest_car(cars, rear_right)
+
+            def feature_if_exist(car, feature):
+                if len(car) == 0:
+                    return None
+                elif feature == 'vy':
+                    return car[3]
+                else:
+                    return to_feature(car, feature)
+
+            feature.append("{}frame_before".format(length - i))
+            # 逆数取る特徴を定義
+            feature.append(drv['gas'])
+            feature.append(drv['brake'])
+            feature.append(drv['steer'])
+            feature.append(feature_if_exist(f_c_car, Features.Distance))
+            feature.append(feature_if_exist(f_c_car, 'vy'))
+
+            f_c_car_ttcy = feature_if_exist(f_c_car, Features.TimeToCollisionY)
+            if f_c_car_ttcy == 0:
+                f_c_car_ttcy = None
+
+            r_r_car_ttcy = feature_if_exist(r_r_car, Features.TimeToCollisionY)
+            if r_r_car_ttcy == 0:
+                r_r_car_ttcy = None
+
+            feature.append(1 / f_c_car_ttcy if f_c_car_ttcy is not None else None)
+            feature.append(feature_if_exist(r_r_car, Features.Distance))
+            feature.append(feature_if_exist(r_r_car, 'vy'))
+            feature.append(1 / r_r_car_ttcy if r_r_car_ttcy is not None else None)
+            features.append(feature)
+
+            # pd.Series([
+            #     length - i,
+            #     drv['gas'],
+            #     drv['brake'],
+            #     drv['steer'],
+            #     feature_if_exist(f_c_car, dT.Features.Distance),
+            #     feature_if_exist(f_c_car, 'vy'),
+            #     1 / f_c_car_ttcy,
+            #     feature_if_exist(r_r_car, dT.Features.Distance),
+            #     feature_if_exist(r_r_car, 'vy'),
+            #     1 / r_r_car_ttcy,
+            # ], index=columns)
+
+            # , dropna=True
+            # Noneの点が消えるようになってるが、ヒストグラムのところでバグが出る。
+
+        plot_data = pd.DataFrame(features, columns=columns)
+        del (features)
+        # green_to_red = sns.diverging_palette(145, 10, n=100, center="dark")  # , s=70, l=40, n=3
+        # ax = sns.pairplot(pd.DataFrame(features, columns=columns), hue="label", palette=green_to_red[first_of_color_palette:])
+        # ax._legend.remove()
+        yield plot_data
 
 
 if __name__ == '__main__':
