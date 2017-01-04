@@ -23,6 +23,9 @@ from sklearn.decomposition import PCA
 
 if __name__ == '__main__':
 
+
+
+
     if not os.path.exists(join(repo_env.DATA_DIR, "data_list")):
         print os.path.exists(join(repo_env.DATA_DIR, "data_list"))
         data_list_unnecessary = list(dT.load_each_lc(105))

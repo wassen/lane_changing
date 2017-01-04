@@ -9,17 +9,7 @@ from sklearn.decomposition import PCA
 
 if __name__ == "__main__":
 
-    iris = datasets.load_iris()
-    X = iris.data
-    Y = iris.target
+    import ddTools as dT
 
-    # 主成分分析前のサイズ
-    print(X.shape)
-
-    # 主成分分析による次元削減
-    pca = PCA(n_components = 2)
-    pca.fit(X)
-    X_pca= pca.transform(X)
-
-    # 主成分分析後のサイズ
-    print(X_pca.shape)
+    data_each_lc = dT.DataEachLC(features=['front_center_distance', 'front_center_relvy'])
+    print(list(data_each_lc.prevs())[0].shape)

@@ -16,10 +16,6 @@ import repo_env
 # label間違ってた問題、影響ある？ seabornのpairplotはlabelで自動色分けできたけど、それ以外は影響ないはず。seabornも結局エラー祭りだったし。
 
 types = ('drv', 'roa', 'sur')
-columns = ('label',
-           'gas', 'brake', 'steer',
-           'front_center_distance', 'front_center_relvy', 'front_center_ittc_2ndy',
-           'rear_right_distance', 'rear_right_relvy', 'rear_right_ittc_2ndy')
 
 
 class ExtMatrix(np.matrix):
@@ -55,109 +51,17 @@ class ExtMatrix(np.matrix):
     det = property(__getdet, __setdet, __deldet)
 
 
-def __load_data_list():
-    def load_right_divide_9000():
-
-        def load(behavior, lc_series_num, type):
-            return pd.read_pickle(join(repo_env.DATA_DIR, 'divide_9000', behavior, 'right', lc_series_num, type))
-
-        type_df_dict_list = []
-        for behavior in sorted(ls(join(repo_env.DATA_DIR, 'divide_9000'))):
-            for lc_series_num in sorted(ls(join(repo_env.DATA_DIR, 'divide_9000', behavior, 'right'))):
-                type_df_dict_list.append({tYpe: load(behavior, lc_series_num, tYpe) for tYpe in types})
-        return type_df_dict_list
-
-    for j, type_df_dict in enumerate(load_right_divide_9000()):
-        start_index = dT.start_index(type_df_dict['roa']['lc'])['right'][0]
-        if start_index < 100:
-            first_of_array = 0
-        else:
-            first_of_array = start_index - 100
-
-        drv_10_sec = type_df_dict['drv'][first_of_array:start_index]
-        roa_10_sec = type_df_dict['roa'][first_of_array:start_index]
-        sur_10_sec = dT.add_accel(type_df_dict['sur'][first_of_array:start_index])
-        length = len(drv_10_sec)
-        features = []
-        for i, (drv, roa, sur) in enumerate(zip(drv_10_sec.iterrows(), roa_10_sec.iterrows(), sur_10_sec)):
-
-            # print(i)
-            feature = []
-            drv = drv[1]
-
-            cars = dT.get_cars(sur)
-            f_c_car = dT.specific_nearest_car(cars, dT.front_center)
-            r_r_car = dT.specific_nearest_car(cars, dT.rear_right)
-
-            def feature_if_exist(car, feature):
-                if len(car) == 0:
-                    return None
-                elif feature == 'vy':
-                    return car[3]
-                else:
-                    return dT.to_feature(car, feature)
-
-            feature.append("{}frame_before".format(length - i))
-            # 逆数取る特徴を定義
-            feature.append(drv['gas'])
-            feature.append(drv['brake'])
-            feature.append(drv['steer'])
-            feature.append(feature_if_exist(f_c_car, dT.Features.Distance))
-            feature.append(feature_if_exist(f_c_car, 'vy'))
-
-            f_c_car_ttcy = feature_if_exist(f_c_car, dT.Features.TimeToCollisionY)
-            if f_c_car_ttcy == 0:
-                f_c_car_ttcy = None
-
-            r_r_car_ttcy = feature_if_exist(r_r_car, dT.Features.TimeToCollisionY)
-            if r_r_car_ttcy == 0:
-                r_r_car_ttcy = None
-
-            feature.append(1 / f_c_car_ttcy if f_c_car_ttcy is not None else None)
-            feature.append(feature_if_exist(r_r_car, dT.Features.Distance))
-            feature.append(feature_if_exist(r_r_car, 'vy'))
-            feature.append(1 / r_r_car_ttcy if r_r_car_ttcy is not None else None)
-            features.append(feature)
-
-            # pd.Series([
-            #     length - i,
-            #     drv['gas'],
-            #     drv['brake'],
-            #     drv['steer'],
-            #     feature_if_exist(f_c_car, dT.Features.Distance),
-            #     feature_if_exist(f_c_car, 'vy'),
-            #     1 / f_c_car_ttcy,
-            #     feature_if_exist(r_r_car, dT.Features.Distance),
-            #     feature_if_exist(r_r_car, 'vy'),
-            #     1 / r_r_car_ttcy,
-            # ], index=columns)
-
-            # , dropna=True
-            # Noneの点が消えるようになってるが、ヒストグラムのところでバグが出る。
-
-        plot_data = pd.DataFrame(features, columns=columns)
-        del (features)
-        # green_to_red = sns.diverging_palette(145, 10, n=100, center="dark")  # , s=70, l=40, n=3
-        # ax = sns.pairplot(pd.DataFrame(features, columns=columns), hue="label", palette=green_to_red[first_of_color_palette:])
-        # ax._legend.remove()
-        yield plot_data
+# def get_lims(x_sample_name, y_sample_name):
+#     x_all_samples = [val for data in data_list for val in data[x_sample_name] if val is not None]
+#     y_all_samples = [val for data in data_list for val in data[y_sample_name] if val is not None]
+#
+#     xlims = (min(x_all_samples), max(x_all_samples))
+#     ylims = (min(y_all_samples), max(y_all_samples))
+#
+#     return xlims, ylims
 
 
-def get_feature_combinations():
-    return combinations(columns[1:], 2)
-
-
-def get_lims(x_sample_name, y_sample_name):
-    x_all_samples = [val for data in data_list for val in data[x_sample_name] if val is not None]
-    y_all_samples = [val for data in data_list for val in data[y_sample_name] if val is not None]
-
-    xlims = (min(x_all_samples), max(x_all_samples))
-    ylims = (min(y_all_samples), max(y_all_samples))
-
-    return xlims, ylims
-
-
-def get_lims2(data_list2):
+def get_lims(data_list2):
     x_all_samples = [val for data in data_list2 for val in data.ix[:, 0] if val is not None]
     y_all_samples = [val for data in data_list2 for val in data.ix[:, 1] if val is not None]
 
@@ -167,39 +71,10 @@ def get_lims2(data_list2):
     return xlims, ylims
 
 
-def scatter_each_behavior(x_sample_name, y_sample_name):
-    xlims, ylims = get_lims(x_sample_name, y_sample_name)
 
-    fig = plt.figure()
-
-    repo_env.make_dirs("out", "{}_{}".format(x_sample_name, y_sample_name, ), exist_ok=True)
-
-    bar = progressbar.ProgressBar(widgets=[
-        ' [', progressbar.Timer(), '] ',
-        progressbar.Bar(),
-        progressbar.Counter(),
-        ' (', progressbar.ETA(), ') ',
-    ])
-
-    for i, plot_data in enumerate(bar(data_list)):
-        ax = fig.add_subplot(1, 1, 1)
-
-        plot_samples = plot_data[[x_sample_name, y_sample_name]].as_matrix().T
-        ax.scatter(*plot_samples, color=green_to_red[-plot_samples.shape[1]:])
-
-        ax.set_xlim(*xlims)
-        ax.set_ylim(*ylims)
-
-        ax.set_xlabel(x_sample_name)
-        ax.set_ylabel(y_sample_name)
-
-        fig.savefig(repo_env.path("out", "{}_{}".format(x_sample_name, y_sample_name, ), "scatter_{}.png".format(i, )))
-        fig.clf()
-    plt.close()
-
-
-def scatter_each_behavior2(data_list2):
-    xlims, ylims = get_lims2(data_list2)
+# getlim修正済み
+def scatter_each_behavior(data_list2):
+    xlims, ylims = get_lims(data_list2)
 
     fig = plt.figure()
 
@@ -231,41 +106,9 @@ def scatter_each_behavior2(data_list2):
         fig.clf()
     plt.close()
 
-
-def scatter_all_behavior(x_sample_name, y_sample_name):
-    xlims, ylims = get_lims(x_sample_name, y_sample_name)
-    # forにしないでもできるだろうけど、colorの指定がめんどくさそう
-    # [color for _ in pd_list for color in green_to_red]とかで[g_t_r, g_t_r,...]って並べたらいけるとおもう
-
-    fig = plt.figure()
-
-    repo_env.make_dirs("out", "all", exist_ok=True)
-    filtered_data_list = filter(
-        lambda plot_data: plot_data[[x_sample_name, y_sample_name]].dropna().shape[0] == 100,
-        data_list)
-
-    data_panel = pd.Panel({i: d for i, d in enumerate(filtered_data_list)})
-    data_panel = data_panel.transpose(1, 0, 2)
-    for i, color in zip(data_panel, green_to_red):
-        if i % 5 != 0:
-            continue
-        ax = fig.add_subplot(1, 1, 1)
-
-        plot_data = data_panel[i][[x_sample_name, y_sample_name]]
-        ax.scatter(*plot_data.as_matrix().T, s=10, alpha=0.5, color=color)
-
-        ax.set_xlabel(x_sample_name)
-        ax.set_ylabel(y_sample_name)
-    ax.set_xlim(*xlims)
-    ax.set_ylim(*ylims)
-
-    plt.savefig(repo_env.path("out", "all", "scatter_{}_{}.png".format(x_sample_name, y_sample_name)))
-    plt.close()
-
-
-# データを受け取ったとき用 本来こっちの形のほうがいいのでは？
-def scatter_all_behavior2(data_list2):
-    xlims, ylims = get_lims2(data_list2)
+# getlim修正済み
+def scatter_all_behavior(data_list2):
+    xlims, ylims = get_lims(data_list2)
     # forにしないでもできるだろうけど、colorの指定がめんどくさそう
     # [color for _ in pd_list for color in green_to_red]とかで[g_t_r, g_t_r,...]って並べたらいけるとおもう
 
@@ -279,7 +122,7 @@ def scatter_all_behavior2(data_list2):
 
     data_3d_array = np.array([data.as_matrix() for data in data_list2])
     data_array_each_time = data_3d_array.transpose(1, 0, 2)
-    for data, color in zip(data_array_each_time, green_to_red2):
+    for data, color in zip(data_array_each_time, green_to_red_20):
         # plot_samples = plot_data.as_matrix().T
         # ax.scatter(*plot_samples, color=green_to_red2)
 
@@ -372,6 +215,67 @@ def scatter_animation(x_sample_name, y_sample_name):
 
 
 from matplotlib.patches import Ellipse
+
+def contours2(data_list2):
+    xlims, ylims = get_lims(data_list2)
+
+    x_name = data_list2[0].columns[0]
+    y_name = data_list2[0].columns[1]
+
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+
+    delta = 0.025
+    # x = np.arange(start=xlims[0], stop=xlims[1], step=delta)
+    # y = np.arange(start=ylims[0], stop=ylims[1], step=delta)
+    x = np.arange(start=20, stop=80, step=delta)
+    y = np.arange(start=-5, stop=5, step=delta)
+    X, Y = np.meshgrid(x, y)
+    from matplotlib import mlab
+    from math import sqrt
+
+    lc_time_feature_array = np.array([data.as_matrix() for data in data_list2])
+    time_lc_feature_array = lc_time_feature_array.transpose(1, 0, 2)
+    for lc_feature_array, color in zip(time_lc_feature_array, green_to_red_20):
+        m = np.mean(lc_feature_array, axis=0)
+        cov = np.cov(lc_feature_array, rowvar=False)
+
+        # print("mean={},cov={}".format(m, cov))
+
+        def sigma_from(cov):
+            return sqrt(cov[0][0]), sqrt(cov[1][1]), cov[0][1]
+
+        mux, muy = m
+        sigmax, sigmay, sigmaxy = sigma_from(cov)
+        Z = mlab.bivariate_normal(X, Y, mux=mux, muy=muy, sigmax=sigmax, sigmay=sigmay, sigmaxy=sigmaxy)
+        print(cov)
+        # levels = [0.003]
+        # CS = ax.contour(X, Y, Z, levels=levels, alpha=1, linewidth=0.5, colors=[color for _ in levels])
+        # CS.clabel(fontsize=9, inline=1)
+
+        # クソ
+        # print(cov.dtype)
+        # cov = np.array(cov, dtype=float)
+        cov = ExtMatrix(cov)
+        # 固有ベクトルの一行一列がcos\thetaになんのか・・・
+        eig_val, eig_vec = cov.eig
+        # array->mat->arrayでややこしいんやけど
+
+        def angle(v):
+            v = np.array(v)
+            first_vec = v[:, 0]
+            return np.rad2deg(np.arctan(first_vec[1] / first_vec[0]))
+
+        ell = Ellipse(xy=m, width=sqrt(eig_val[0] * 2 * 2), height=sqrt(eig_val[1] * 2 * 2), angle=angle(eig_vec),
+                      alpha=1, edgecolor=color, fill=False, linewidth=2)
+        ax.add_patch(ell)
+
+        ax.set_xlabel(x_name)
+        ax.set_ylabel(y_name)
+
+    # fig.savefig(repo_env.path("out", "{}_{}".format(x_sample_name, y_sample_name, ), "scatter_{}.png".format(i, )))
+    ax.autoscale()
+    plt.show()
 
 
 # scatter aniumationとかぶってる
@@ -510,7 +414,7 @@ def contours(x_sample_name, y_sample_name):
 if __name__ == "__main__":
     pass
 else:
-    global data_list, green_to_red
+    global data_list, green_to_red, green_to_red_20
     # data_list = list(__load_data_list())
     green_to_red = sns.diverging_palette(145, 10, n=100, center="dark")  # , s=70, l=40, n=3
-    green_to_red2 = sns.diverging_palette(145, 10, n=20, center="dark")  # , s=70, l=40, n=3
+    green_to_red_20 = sns.diverging_palette(145, 10, n=20, center="dark")  # , s=70, l=40, n=3
