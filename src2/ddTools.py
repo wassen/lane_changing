@@ -23,6 +23,7 @@ columns = ('label',
 
 
 class DataEachLC:
+
     @classmethod
     def load_each_lc(cls, deci_second):
         def load_right_divide_9000():
@@ -111,7 +112,7 @@ class DataEachLC:
             # ax._legend.remove()
             yield plot_data
 
-    def pca_all(seΩlf):
+    def pca_all(self):
         pass
 
     # def filter_complete(self):
@@ -125,7 +126,7 @@ class DataEachLC:
     #     #     data_list
     #     # )
 
-    def add_prev_diff(self, df):
+    def __add_prev_diff(self, df):
         for i in df:
             n = [None]
             n.extend(df[:-1][i])
@@ -134,10 +135,35 @@ class DataEachLC:
             df = df.assign(**kwargs)
         return df.dropna().set_index(np.arange(0, self.deci_second - self.frame_rate, self.frame_rate))
 
+    @staticmethod
+    def dfinlist_to_nparray3d(it):
+        return np.array([np.array(df) for df in it])
+
+    @staticmethod
+    def nparray3d_to_2d(it):
+        shape = it.shape
+        return it.reshape(shape[0] * shape[1], shape[2])
+
+    def train_test_for_bayes(self, num=5):
+        def divided_data(it, num):
+
+            shuffle_it = np.random.permutation([np.array(item) for item in it])
+            center = len(shuffle_it) / num
+            return shuffle_it[:center], shuffle_it[center:]
+
+        test, train = divided_data(self.extract_data, num)
+        return train, test
+
+    def mean_and_cov_train(self):
+        train = self.train
+
     def __init__(self, **kwargs):
         self.deci_second = deci_second = kwargs.get("deci_second", 105)
         self.frame_rate = frame_rate = kwargs.get("frame_rate", 5)
         self.features = features = kwargs.get("features", columns)
+        self.diffs = ["diff_{}".format(feature) for feature in features]
+        self.prevs = ["prev_{}".format(feature) for feature in features]
+        self.extract_data = None
 
         pickle_path = repo_env.path("data",
                                     "{0[0]}_{0[1]}_{1}second_{2}frame_rate_each_df_list.pickle".
@@ -157,15 +183,16 @@ class DataEachLC:
             # 105フレーム揃ってるやつだけ抽出。意図せず外れてしまっているやつを直したい。
             # print("{}フレーム揃ってる車線変更データ数は{}個です".format(self.frame_rate, len(self.data)))
             self.data = [
-                self.add_prev_diff(data) for data in self.data
+                self.__add_prev_diff(data) for data in self.data
                 ]
             pd.to_pickle(self.data, pickle_path)
 
     def extract_columns(self, columns):
-        return [
+        self.extract_data = [
             data[columns]
             for data in self.data
             ]
+        return self.extract_data
 
     def prev_names(self):
         return ["prev_{}".format(feature) for feature in self.features]
@@ -174,10 +201,12 @@ class DataEachLC:
         return ["diff_{}".format(feature) for feature in self.features]
 
     def divide(self, iterable, train_percentage=0.2):
+        pass
         len(iterable)
         return iterable
 
     def cv_each_trial(self, ):
+        pass
 
 
 def get_columns_combinations():

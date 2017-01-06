@@ -17,9 +17,11 @@ class BayesEstimation():
         self.end_time = size
 
     def normalize(self):
-        self.dist /= sum(self.dist)
+        if not all([prob == 0 for prob in self.dist]):
+            self.dist /= sum(self.dist)
 
-    def update(self, likelihoods):
+
+    def update2(self, likelihoods):
         likelihoods = np.array(likelihoods)
         if self.time == 0:
             self.dist *= likelihoods
@@ -27,7 +29,18 @@ class BayesEstimation():
             cheat = [0]
             posterior = self.dist[:-1] * likelihoods[1:]
             self.dist = np.concatenate([cheat, posterior])
-        # self.normalize()
+        self.normalize()
+        self.time += 1
+
+    def update(self, likelihoods):
+        logli = np.log(likelihoods)
+        if self.time == 0:
+            self.dist = np.exp(np.log(self.dist) + logli)
+        else:
+            cheat = [0]
+            posterior = np.exp(np.log(self.dist[:-1]) + logli[1:])
+            self.dist = np.concatenate([cheat, posterior])
+        self.normalize()
         self.time += 1
 
 
@@ -94,9 +107,9 @@ if __name__ == "__main__":
         return ExtMatrix(cov)
 
 
-    def log_self_bibariate(s, x):
+    def log_self_bibariate(sample, x):
         mean = x[0:2]
-        s_m = np.matrix(s)
+        s_m = np.matrix(sample)
         mean_m = np.matrix(mean)
         cov_m = get_cov_matrix(x)
         diff = s_m - mean_m
@@ -133,7 +146,7 @@ if __name__ == "__main__":
     # result = minimize(mini, x0=[4, 3, 1, 0, 1], constraints=cons, method="SLSQP")
     # print(result)
 
-
+    # 逐次推定をlogで
     def bayes_update_sample():
         bs = BayesEstimation(10)
         print(bs.dist)
@@ -159,9 +172,10 @@ if __name__ == "__main__":
         print(bs.dist)
         bs.update([1, 2, 2, 4, 5, 6, 7, 8, 9, 10])
         print(bs.dist)
-
+    bayes_update_sample()
 
     from matplotlib.patches import Ellipse
+
 
 
     def contour_sample():
@@ -224,4 +238,4 @@ if __name__ == "__main__":
         plt.show()
 
 
-    contour_sample()
+    # contour_sample()
