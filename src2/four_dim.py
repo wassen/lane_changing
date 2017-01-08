@@ -71,7 +71,7 @@ if __name__ == '__main__':
     ]
 
     # dataframeのリストをそのままnparrayに突っ込んでも3次元arrayにならない。（おそらくpandas3大クソ仕様のうちの一つの__iter__()をcolumnsにしているせい）
-    filtered_3d_array = np.array([data.as_matrix() for data in data_list_add_prev])
+    filtered_3d_array = np.array([data.as_matrix() for d in data_list_add_prev])
     # first axis 時刻, second axis 各LCトライアル, third axis 特徴
     array_each_time = filtered_3d_array.transpose(1, 0, 2)
     # alltime_and_trial = filtered_3d_array.reshape()でもかわらずか？

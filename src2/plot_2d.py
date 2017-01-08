@@ -130,8 +130,10 @@ def scatter_all_behavior(data_list2):
 
     ax.set_xlabel(x_name)
     ax.set_ylabel(y_name)
-    ax.set_xlim(-5, 5)
-    ax.set_ylim(-5, 5)
+    # ax.set_xlim(-5, 5)
+    # ax.set_ylim(-5, 5)
+    ax.set_xlim(xlims)
+    ax.set_ylim(ylims)
 
     plt.savefig(repo_env.path("out", "all", "scatter_{}_{}.png".format(x_name, y_name)))
     plt.close()

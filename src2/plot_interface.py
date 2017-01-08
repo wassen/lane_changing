@@ -1,37 +1,36 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+import plot_2d
+import ddTools as dT
 
 if __name__ == '__main__':
-    # いちいち読み込むのが時間かかる。
-    # import sys
-    # sys.argv
 
-    # if sys.argv == "2d":
-    import plot_2d
-    # plot_2d.scatter_each_behavior('front_center_distance', 'front_center_relvy')
-    # print('')
+    features = ["front_center_distance", "front_center_relvy"]
+
+    delc = dT.DataEachLC(features=features)
+
+    features_df_list = delc.extract_columns(features)
+
+    plot_2d.scatter_all_behavior(features_df_list)
+    plot_2d.scatter_each_behavior(features_df_list)
+    plot_2d.contours('front_center_distance', 'front_center_relvy')
+
+    diffs_df_list = delc.extract_columns(delc.diffs)
+
+    # plot_2d.scatter_each_behavior(diffs_df_list)
+    plot_2d.scatter_all_behavior(diffs_df_list)
+
+    with_prevs = features + delc.prevs
+    with_prevs_df_list = delc.extract_columns(with_prevs)
+
     # for com in plot_2d.get_feature_combinations():
     #     plot_2d.scatter_all_behavior(*com)
     # plot_2d.contours('front_center_distance', 'front_center_relvy')
     # plot_2d.scatter_all_behavior('front_center_distance', 'front_center_relvy')
     # plot_2d.scatter_each_time('front_center_distance', 'front_center_relvy')
 
-    import ddTools as dT
 
-    features = ["front_center_distance", "front_center_relvy"]
-    diffs = ["diff_{}".format(feature) for feature in features]
-    prevs = ["prev_{}".format(feature) for feature in features]
 
-    delc = dT.DataEachLC(features=features)
-
-    diffs_df_list = delc.extract_columns(diffs)
-
-    # plot_2d.scatter_each_behavior(diffs_df_list)
-    plot_2d.scatter_all_behavior(diffs_df_list)
-
-    with_prevs = features + prevs
-    with_prevs_df_list = delc.extract_columns(with_prevs)
 
     import numpy as np
 

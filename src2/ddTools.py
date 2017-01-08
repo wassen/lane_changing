@@ -13,6 +13,8 @@ import constants as c
 import repo_env
 from os import listdir as ls
 
+# import driving_data as dd
+
 front_center = 'front_center'
 rear_right = 'rear_right'
 types = ('drv', 'roa', 'sur')
@@ -23,7 +25,6 @@ columns = ('label',
 
 
 class DataEachLC:
-
     @classmethod
     def load_each_lc(cls, deci_second):
         def load_right_divide_9000():
@@ -49,15 +50,22 @@ class DataEachLC:
             sur_10_sec = add_accel(type_df_dict['sur'][first_of_array:start_i])
             length = len(drv_10_sec)
             features = []
+
+            # 車線変更開始前の特定にタイミングにおける車両を追い続ける
+            index_of_detect_car = 0
+            fixed_f_c_car = specific_nearest_car2(get_cars(sur_10_sec[index_of_detect_car]), "front_center")
+            fixed_r_r_car = specific_nearest_car2(get_cars(sur_10_sec[index_of_detect_car]), "rear_right")
+
             for i, (drv, roa, sur) in enumerate(zip(drv_10_sec.iterrows(), roa_10_sec.iterrows(), sur_10_sec)):
 
-                # print(i)
                 feature = []
                 drv = drv[1]
 
                 cars = get_cars(sur)
-                f_c_car = specific_nearest_car(cars, front_center)
-                r_r_car = specific_nearest_car(cars, rear_right)
+                # f_c_car = specific_nearest_car(cars, front_center)
+                # r_r_car = specific_nearest_car(cars, rear_right)
+                f_c_car = cars.get(fixed_f_c_car[0], [])
+                r_r_car = cars.get(fixed_r_r_car[0], [])
 
                 def feature_if_exist(car, feature):
                     if len(car) == 0:
@@ -146,7 +154,6 @@ class DataEachLC:
 
     def train_test_for_bayes(self, num=5):
         def divided_data(it, num):
-
             shuffle_it = np.random.permutation([np.array(item) for item in it])
             center = len(shuffle_it) / num
             return shuffle_it[:center], shuffle_it[center:]
@@ -180,11 +187,13 @@ class DataEachLC:
                 one_lc for one_lc in self.data
                 if one_lc.dropna().shape[0] == self.deci_second / self.frame_rate
             )
+
             # 105フレーム揃ってるやつだけ抽出。意図せず外れてしまっているやつを直したい。
             # print("{}フレーム揃ってる車線変更データ数は{}個です".format(self.frame_rate, len(self.data)))
             self.data = [
                 self.__add_prev_diff(data) for data in self.data
                 ]
+
             pd.to_pickle(self.data, pickle_path)
 
     def extract_columns(self, columns):
@@ -210,6 +219,7 @@ class DataEachLC:
 
 
 def get_columns_combinations():
+    from itertools import combinations
     return combinations(columns[1:], 2)
 
 
@@ -227,6 +237,24 @@ def specific_nearest_car(cars, cartype):
     front_car = sorted(front_cars, key=lambda x: to_feature(x, Features.Distance))
     if len(front_car) == 0:
         return []
+    else:
+        return front_car
+
+
+def specific_nearest_car2(cars, cartype):
+    half_width = c.LANE_WIDTH / 2.
+    if cartype == 'front_center':
+        def cond(car_value):
+            # ここの条件はもうちょい考えたほうがいいかも？
+            return -half_width < car_value[0] < half_width and car_value[1] > 0
+    elif cartype == 'rear_right':
+        def cond(car_value):
+            return half_width < car_value[0] < 3 * half_width and car_value[1] < 0
+    # ここがめんどくさいな
+    front_cars = {key: cars[key] for key in cars if cond(cars[key])}
+    front_car = sorted(front_cars.items(), key=lambda item: to_feature(item[1], Features.Distance))
+    if len(front_car) == 0:
+        return [None, []]
     else:
         return front_car[0]
 
@@ -355,7 +383,7 @@ def to_feature(car, feature):
 def get_cars(sur_row):
     sur_row = np.array(sur_row)
     cars = sur_row.reshape(int(sur_row.shape[0] / 6), 6).tolist()
-    return filter(lambda car: not all([item == 0 for item in car]), cars)
+    return {i: car for i, car in enumerate(cars) if not all([item == 0 for item in car])}
 
 
 ## TODO driving dataと同じコード。ddのほうは読み込み時間かかって使いにくい。csv読み込みは別にメソッドで用意したほうがいいのかもしれない。
