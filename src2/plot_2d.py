@@ -12,6 +12,7 @@ import seaborn as sns
 import numpy as np
 import ddTools as dT
 import repo_env
+from matplotlib.patches import Ellipse
 
 # label間違ってた問題、影響ある？ seabornのpairplotはlabelで自動色分けできたけど、それ以外は影響ないはず。seabornも結局エラー祭りだったし。
 
@@ -94,7 +95,7 @@ def scatter_each_behavior(data_list2):
         ax = fig.add_subplot(1, 1, 1)
 
         plot_samples = plot_data.as_matrix().T
-        ax.scatter(*plot_samples, color=green_to_red2)
+        ax.scatter(*plot_samples, color=green_to_red_20)
 
         # ax.set_xlim(*xlims)
         # ax.set_ylim(*ylims)
@@ -216,9 +217,10 @@ def scatter_animation(x_sample_name, y_sample_name):
     plt.show()
 
 
-from matplotlib.patches import Ellipse
 
-def contours2(data_list2):
+
+
+def contours(data_list2):
     xlims, ylims = get_lims(data_list2)
 
     x_name = data_list2[0].columns[0]
@@ -250,7 +252,6 @@ def contours2(data_list2):
         mux, muy = m
         sigmax, sigmay, sigmaxy = sigma_from(cov)
         Z = mlab.bivariate_normal(X, Y, mux=mux, muy=muy, sigmax=sigmax, sigmay=sigmay, sigmaxy=sigmaxy)
-        print(cov)
         # levels = [0.003]
         # CS = ax.contour(X, Y, Z, levels=levels, alpha=1, linewidth=0.5, colors=[color for _ in levels])
         # CS.clabel(fontsize=9, inline=1)
@@ -275,13 +276,12 @@ def contours2(data_list2):
         ax.set_xlabel(x_name)
         ax.set_ylabel(y_name)
 
-    # fig.savefig(repo_env.path("out", "{}_{}".format(x_sample_name, y_sample_name, ), "scatter_{}.png".format(i, )))
     ax.autoscale()
-    plt.show()
+    fig.savefig(repo_env.path("out", "contour_{}_{}.png".format(x_name, y_name, )))
 
 
 # scatter aniumationとかぶってる
-def contours(x_sample_name, y_sample_name):
+def contours_old(x_sample_name, y_sample_name):
     fig = plt.figure()
 
     # 100フレーム揃ってるやつだけ抽出。意図せず外れてしまっているやつを直したい。

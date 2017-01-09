@@ -102,37 +102,3 @@ if __name__ == '__main__':
             log_likelihoods = [gauss.log_likelihood(tes_tra) for gauss in gauss_list]
             be.update(log_likelihoods)
             print("act:{0}, pred:{1}".format(size - j, be.most_likely_time()))
-
-# 紙に手続き書いてから実装しよう。5つ分割して、残り1つで結果出してみる。plot_interfaceのかぶりも消去
-
-
-
-
-# naibu トライアルごとにshuffle
-# random_divide(5)
-# data = self.data
-# import numpy as np
-# size = len(data)
-# shuffled_data = np.random.permutation(data)
-# size / percentage size % percentage?????
-# for i in range(num):
-#     int(size/num)
-#     yield data[sizetokanumtoka]
-# def cv_data
-# return 5bunnkatu
-
-# 理想の形
-
-# for comb in dT.DataEachLC.data(5):
-#     train = comb[0]
-#     test = comb[1]  # ここのtestをiterableにしなあかんのか
-#     # train = concat_all(train)# reshape? flatten?これは内部でやっとく
-#     mean, cov = mean_cov(train)
-#
-#     for tes in test:
-#         be = GaussBayesEstimation(mean, cov, 20, )
-#         for i in tes:
-#             be.update(tes[i])
-#             print(i, be.most_likely_time)
-#         c
-#             # likelihood = gaussian( ,mean, cov)naibu

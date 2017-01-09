@@ -52,7 +52,10 @@ class DataEachLC:
             features = []
 
             # 車線変更開始前の特定にタイミングにおける車両を追い続ける
-            index_of_detect_car = 0
+            index_of_detect_car = 5
+            if not len(sur_10_sec) == 105:
+                continue
+
             fixed_f_c_car = specific_nearest_car2(get_cars(sur_10_sec[index_of_detect_car]), "front_center")
             fixed_r_r_car = specific_nearest_car2(get_cars(sur_10_sec[index_of_detect_car]), "rear_right")
 
@@ -156,9 +159,24 @@ class DataEachLC:
         def divided_data(it, num):
             shuffle_it = np.random.permutation([np.array(item) for item in it])
             center = len(shuffle_it) / num
-            return shuffle_it[:center], shuffle_it[center:]
+            amari = len(shuffle_it) % num
 
-        test, train = divided_data(self.extract_data, num)
+            addition_former = [0] * (num - amari + 1)
+            addition_latter = range(1, amari + 1)
+            addition = addition_former + addition_latter
+            indexes = [center * i for i in range(num + 1)]
+            indexes_added = [index + a for index, a in zip(indexes, addition)]
+            indexes_begin_end = [{"begin": begin, "end": end}
+                                 for begin, end in zip(indexes_added[:-1], indexes_added[1:])
+                                 ]
+
+            return [shuffle_it[index["begin"]:index["end"]] for index in indexes_begin_end]
+
+        divided = divided_data(self.extract_data, num)
+        from itertools import chain
+        test, train = divided[0], list(chain.from_iterable(divided[1:]))
+        # print(test)
+        # print(train)
         return train, test
 
     def mean_and_cov_train(self):
@@ -179,6 +197,7 @@ class DataEachLC:
 
         if exists(pickle_path):
             self.data = pd.read_pickle(pickle_path)
+            print(len(self.data))
         else:
             # load->5刻みに、特定の特徴を抜き出す->全フレーム揃ってるやつだけ->0.5sec前の値と、それの差分の列を追加
             self.data = self.__class__.load_each_lc(deci_second)
@@ -187,7 +206,6 @@ class DataEachLC:
                 one_lc for one_lc in self.data
                 if one_lc.dropna().shape[0] == self.deci_second / self.frame_rate
             )
-
             # 105フレーム揃ってるやつだけ抽出。意図せず外れてしまっているやつを直したい。
             # print("{}フレーム揃ってる車線変更データ数は{}個です".format(self.frame_rate, len(self.data)))
             self.data = [
@@ -208,11 +226,6 @@ class DataEachLC:
 
     def diff_names(self):
         return ["diff_{}".format(feature) for feature in self.features]
-
-    def divide(self, iterable, train_percentage=0.2):
-        pass
-        len(iterable)
-        return iterable
 
     def cv_each_trial(self, ):
         pass
