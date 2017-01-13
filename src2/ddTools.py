@@ -50,9 +50,10 @@ class DataEachLC:
             sur_10_sec = add_accel(type_df_dict['sur'][first_of_array:start_i])
             length = len(drv_10_sec)
             features = []
-
+            if length != 105:
+                continue
             # 車線変更開始前の特定にタイミングにおける車両を追い続ける
-            index_of_detect_car = 0
+            index_of_detect_car = 5
             fixed_f_c_car = specific_nearest_car2(get_cars(sur_10_sec[index_of_detect_car]), "front_center")
             fixed_r_r_car = specific_nearest_car2(get_cars(sur_10_sec[index_of_detect_car]), "rear_right")
 
@@ -62,8 +63,8 @@ class DataEachLC:
                 drv = drv[1]
 
                 cars = get_cars(sur)
-                # f_c_car = specific_nearest_car(cars, front_center)
-                # r_r_car = specific_nearest_car(cars, rear_right)
+                # f_c_car = specific_nearest_car2(cars, front_center)
+                # r_r_car = specific_nearest_car2(cars, rear_right)
                 f_c_car = cars.get(fixed_f_c_car[0], [])
                 r_r_car = cars.get(fixed_r_r_car[0], [])
 

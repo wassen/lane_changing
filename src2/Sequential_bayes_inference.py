@@ -30,8 +30,13 @@ class GaussBayesEstimation:
         self.time = 0
         self.size = size
 
-    def most_likely_time(self):
-        return self.size - np.argmax(self.dist)
+    def most_likely_time(self, method="weight"):
+        if method == "weight":
+            weight = np.array(self.dist)
+            time_array = np.linspace(start=self.size, stop=1, num=self.size)
+            return np.dot(weight, time_array)
+        elif method == "MAP":
+            return self.size - np.argmax(self.dist)
 
     def normalize(self):
         if not all([prob == 0 for prob in self.dist]):
@@ -93,15 +98,27 @@ if __name__ == '__main__':
     cov_list = [np.cov(train_trans, rowvar=False) for train_trans in train_trans_list]
 
     gauss_list = [Bivariate_Gaussian(mean, cov) for mean, cov in zip(mean_list, cov_list)]
+    errors_list = []
+    exps_list= []
     for i, tes in enumerate(test):
         print("case{}".format(i))
         tes_trans = pca.transform(tes)
         size = 20
         be = GaussBayesEstimation(size, )
+        errors = []
+        exps=[]
         for j, tes_tra in enumerate(tes_trans):
             log_likelihoods = [gauss.log_likelihood(tes_tra) for gauss in gauss_list]
             be.update(log_likelihoods)
-            print("act:{0}, pred:{1}".format(size - j, be.most_likely_time()))
+            act = size - j
+            exp = be.most_likely_time("MAP")
+            print("act:{0}, pred:{1}".format(act, exp))
+            errors.append((act - exp)**2)
+            exps.append(exp)
+        errors_list.append(errors)
+        exps_list.append(exps)
+    frame_each_time = 2
+    print([round(np.average(exps)/frame_each_time, 2) for exps in np.array(exps_list).T])
 
 # 紙に手続き書いてから実装しよう。5つ分割して、残り1つで結果出してみる。plot_interfaceのかぶりも消去
 
