@@ -50,12 +50,10 @@ class DataEachLC:
             sur_10_sec = add_accel(type_df_dict['sur'][first_of_array:start_i])
             length = len(drv_10_sec)
             features = []
-
+            if length != 105:
+                continue
             # 車線変更開始前の特定にタイミングにおける車両を追い続ける
             index_of_detect_car = 5
-            if not len(sur_10_sec) == 105:
-                continue
-
             fixed_f_c_car = specific_nearest_car2(get_cars(sur_10_sec[index_of_detect_car]), "front_center")
             fixed_r_r_car = specific_nearest_car2(get_cars(sur_10_sec[index_of_detect_car]), "rear_right")
 
@@ -197,7 +195,6 @@ class DataEachLC:
 
         if exists(pickle_path):
             self.data = pd.read_pickle(pickle_path)
-            print(len(self.data))
         else:
             # load->5刻みに、特定の特徴を抜き出す->全フレーム揃ってるやつだけ->0.5sec前の値と、それの差分の列を追加
             self.data = self.__class__.load_each_lc(deci_second)
