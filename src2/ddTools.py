@@ -65,8 +65,8 @@ class DataEachLC:
                 drv = drv[1]
 
                 cars = get_cars(sur)
-                # f_c_car = specific_nearest_car(cars, front_center)
-                # r_r_car = specific_nearest_car(cars, rear_right)
+                # f_c_car = specific_nearest_car2(cars, front_center)[1]
+                # r_r_car = specific_nearest_car2(cars, rear_right)[1]
                 f_c_car = cars.get(fixed_f_c_car[0], [])
                 r_r_car = cars.get(fixed_r_r_car[0], [])
 

@@ -72,7 +72,6 @@ def get_lims(data_list2):
     return xlims, ylims
 
 
-
 # getlim修正済み
 def scatter_each_behavior(data_list2):
     xlims, ylims = get_lims(data_list2)
@@ -106,6 +105,7 @@ def scatter_each_behavior(data_list2):
         fig.savefig(repo_env.path("out", "{}_{}".format(x_name, y_name), "scatter_{}.png".format(i, )))
         fig.clf()
     plt.close()
+
 
 # getlim修正済み
 def scatter_all_behavior(data_list2):
@@ -166,58 +166,35 @@ def scatter_each_time(x_sample_name, y_sample_name):
         fig.clf()
 
 
-def scatter_animation(x_sample_name, y_sample_name):
+def scatter_animation(data_list2):
     from matplotlib import animation
+
+    x_name = data_list2[0].columns[0]
+    y_name = data_list2[0].columns[1]
+
     fig = plt.figure()
 
-    # repo_env.make_dirs("out", "{}_{}".format(x_sample_name, y_sample_name, ), exist_ok=True)
+    ax = fig.add_subplot(1, 1, 1)  # プロット消去せずとも前の結果が残らない不思議
 
-    time_before_lane_changing = max([plot_data.shape[0] for plot_data in data_list])
-    print(time_before_lane_changing)
-    import numpy as np
+    lc_time_feature_array = np.array([data.as_matrix() for data in data_list2])
+    time_lc_feature_array = lc_time_feature_array.transpose(1, 0, 2)
 
-    l = []
-    # 割りとクソコード
-    for i in range(time_before_lane_changing):
-        g = []
-        for data in data_list:
-            if time_before_lane_changing - 1 - len(data) < i:
-                g.append(data.ix[i + len(data) - time_before_lane_changing, [x_sample_name, y_sample_name]])
-            else:
-                g.append((np.nan, np.nan))
-        l.append(np.array(g).transpose())
-    # print(l)
+    def gen_ims():
+        for lc_feature_array, color in zip(time_lc_feature_array, green_to_red_20):
+            im = ax.scatter(*lc_feature_array.T, color=color)
+            ax.set_xlabel(x_name)
+            ax.set_ylabel(y_name)
+            # x, y軸をグラフ間で自分で揃える必要はなし
+            yield [im]
 
-    # plot_data_list = [
-    #     np.array(
-    #         [data.ix[i, [x_sample_name, y_sample_name]] for data in data_list]
-    #     ).transpose()
-    #     for i in range(time_before_lane_changing)
-    #     ]
+    ims = list(gen_ims())
 
-    ims = []
-    ax = fig.add_subplot(1, 1, 1)
+    interval = int(10. / 20. * 1000.)
+    ani = animation.ArtistAnimation(fig, ims, interval=interval, repeat=False)  # , interval=1, repeat_delay=1000
 
-    for i, (plot_data, color) in enumerate(zip(l, green_to_red)):
-        im = ax.scatter(*plot_data, color=color)
-        ims.append([im])
-        # ax.set_xlim(*xlims)
-        # ax.set_ylim(*ylims)
-
-        ax.set_xlabel(x_sample_name)
-        ax.set_ylabel(y_sample_name)
-
-    # fig.savefig(repo_env.path("out", "{}_{}".format(x_sample_name, y_sample_name, ), "scatter_{}.png".format(i, )))
-    interval = int(1. / len(ims) * (time_before_lane_changing / 10) * 1000)
-    ani = animation.ArtistAnimation(fig, ims, interval=100, repeat=False)  # , interval=1, repeat_delay=1000
-
-    # 表示
-
-    ani.save('a.gif', writer="imagemagick", fps=10)
+    repo_env.make_dirs("out", exist_ok=True)
+    ani.save("{}_{}.gif".format(x_name, y_name), writer="imagemagick", )  # fps=2
     plt.show()
-
-
-
 
 
 def contours(data_list2):
@@ -262,6 +239,7 @@ def contours(data_list2):
         cov = ExtMatrix(cov)
         # 固有ベクトルの一行一列がcos\thetaになんのか・・・
         eig_val, eig_vec = cov.eig
+
         # array->mat->arrayでややこしいんやけど
 
         def angle(v):

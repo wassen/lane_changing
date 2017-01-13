@@ -24,18 +24,25 @@ class Bivariate_Gaussian:
 
 
 class GaussBayesEstimation:
+
+    def normalize(self):
+        if not all([prob == 0 for prob in self.dist]):
+            self.dist /= sum(self.dist)
+
     def __init__(self, size):
         # 一様分布
-        self.dist = prior = np.ones(size) / size
+        def get_prior():
+            return np.arange(1.,21)[::-1]
+            # return np.ones(size) / size
+        self.dist = get_prior()
+        self.normalize()
         self.time = 0
         self.size = size
 
     def most_likely_time(self):
         return self.size - np.argmax(self.dist)
 
-    def normalize(self):
-        if not all([prob == 0 for prob in self.dist]):
-            self.dist /= sum(self.dist)
+
 
     # def update2(self, likelihoods):
     #     likelihoods = np.array(likelihoods)

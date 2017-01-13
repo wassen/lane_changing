@@ -15,11 +15,12 @@ if __name__ == '__main__':
 
     def plot_features():
         features_df_list = delc.extract_columns(features)
-        plot_2d.scatter_all_behavior(features_df_list)
-        plot_2d.scatter_each_behavior(features_df_list)
-        plot_2d.contours(features_df_list)
+        # plot_2d.scatter_all_behavior(features_df_list)
+        # plot_2d.scatter_each_behavior(features_df_list)
+        # plot_2d.contours(features_df_list)
+        plot_2d.scatter_animation(features_df_list)
 
-    # plot_features()
+    plot_features()
 
     def plot_diffs():
         diffs_df_list = delc.extract_columns(delc.diffs)
@@ -49,8 +50,9 @@ if __name__ == '__main__':
         plot_2d.scatter_all_behavior(transformed_df_list)
         plot_2d.scatter_each_behavior(transformed_df_list)
         plot_2d.contours(transformed_df_list)
+        # plot_2d.scatter_animation(transformed_df_list)
 
-    plot_prevs()
+    # plot_prevs()
 
     def plot_others():
         # 各メソッドの仕様変更（特徴名を引数に→DataFrameのlistを引数に）により利用不可
