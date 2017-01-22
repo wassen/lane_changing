@@ -105,7 +105,7 @@ if __name__ == '__main__':
 
         train_trans_list = [pca.transform(train) for train in train_each_time]
         mean_list = [np.mean(train_trans, axis=0) for train_trans in train_trans_list]
-        cov_list = [np.cov(train_trans, rowvar=False) for train_trans in train_trans_list]
+        cov_list = [np.cov(train_trans, rowvar=False, bias=0) for train_trans in train_trans_list]
 
         gauss_list = [Bivariate_Gaussian(mean, cov) for mean, cov in zip(mean_list, cov_list)]
         errors_list = []
