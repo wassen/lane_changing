@@ -32,6 +32,7 @@ class GaussBayesEstimation:
     def __init__(self, size):
         # 一様分布
         def get_prior():
+            # return np.arange(1.,21)[::-1]
             return np.ones(size) / size
         self.dist = get_prior()
         self.normalize()
@@ -86,6 +87,9 @@ if __name__ == '__main__':
         # print('a')
 
         train, test = delc.train_test_for_bayes()
+
+        print(len(train))
+        print(len(test))
         # これひとつのめソッドに
         data_3d = DataEachLC.dfinlist_to_nparray3d(train)
         train_2d = DataEachLC.nparray3d_to_2d(data_3d)
@@ -104,13 +108,13 @@ if __name__ == '__main__':
 
         train_trans_list = [pca.transform(train) for train in train_each_time]
         mean_list = [np.mean(train_trans, axis=0) for train_trans in train_trans_list]
-        cov_list = [np.cov(train_trans, rowvar=False) for train_trans in train_trans_list]
+        cov_list = [np.cov(train_trans, rowvar=False, bias=0) for train_trans in train_trans_list]
 
         gauss_list = [Bivariate_Gaussian(mean, cov) for mean, cov in zip(mean_list, cov_list)]
         errors_list = []
         exps_list= []
         for i, tes in enumerate(test):
-            # print("case{}".format(i))
+            print("case{}".format(i))
             tes_trans = pca.transform(tes)
             size = 20
             be = GaussBayesEstimation(size, )
@@ -121,14 +125,13 @@ if __name__ == '__main__':
                 be.update(log_likelihoods)
                 act = size - j
                 exp = be.most_likely_time("weight")
-                # print("act:{0}, pred:{1}".format(act, exp))
+                print("act:{0}, pred:{1}".format(act, exp))
                 errors.append((act - exp)**2)
                 exps.append(exp)
             errors_list.append(errors)
             exps_list.append(exps)
         frame_each_time = 2
         return [round(np.average(exps) / frame_each_time, 2) for exps in np.array(exps_list).T]
-
     result = [one_try() for _ in range(100)]
     print(np.average(result, axis=0))
 
