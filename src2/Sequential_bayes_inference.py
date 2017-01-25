@@ -32,8 +32,7 @@ class GaussBayesEstimation:
     def __init__(self, size):
         # 一様分布
         def get_prior():
-            return np.arange(1.,21)[::-1]
-            # return np.ones(size) / size
+            return np.ones(size) / size
         self.dist = get_prior()
         self.normalize()
         self.time = 0
@@ -84,9 +83,9 @@ if __name__ == '__main__':
 
 
     def one_try():
+        # print('a')
 
         train, test = delc.train_test_for_bayes()
-
         # これひとつのめソッドに
         data_3d = DataEachLC.dfinlist_to_nparray3d(train)
         train_2d = DataEachLC.nparray3d_to_2d(data_3d)
@@ -130,7 +129,7 @@ if __name__ == '__main__':
         frame_each_time = 2
         return [round(np.average(exps) / frame_each_time, 2) for exps in np.array(exps_list).T]
 
-    result = [one_try() for _ in range(30)]
+    result = [one_try() for _ in range(100)]
     print(np.average(result, axis=0))
 
 # 紙に手続き書いてから実装しよう。5つ分割して、残り1つで結果出してみる。plot_interfaceのかぶりも消去
