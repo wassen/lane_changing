@@ -49,7 +49,7 @@ if __name__ == '__main__':
                                ]
         plot_2d.scatter_all_behavior(transformed_df_list)
         plot_2d.scatter_each_behavior(transformed_df_list)
-        plot_2d.contours(transformed_df_list)
+        plot_2d.ellipse_all_time(transformed_df_list)
         # plot_2d.scatter_animation(transformed_df_list)
 
     # plot_prevs()
@@ -58,7 +58,7 @@ if __name__ == '__main__':
         # 各メソッドの仕様変更（特徴名を引数に→DataFrameのlistを引数に）により利用不可
         for com in plot_2d.get_feature_combinations():
             plot_2d.scatter_all_behavior(*com)
-        plot_2d.contours('front_center_distance', 'front_center_relvy')
+        plot_2d.ellipse_all_time('front_center_distance', 'front_center_relvy')
         plot_2d.scatter_all_behavior('front_center_distance', 'front_center_relvy')
         plot_2d.scatter_each_time('front_center_distance', 'front_center_relvy')
 

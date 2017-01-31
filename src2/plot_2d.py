@@ -198,12 +198,10 @@ def scatter_and_ellipse_each_time(data_list2):
     trial_time_feature_array = np.array([data.as_matrix() for data in data_list2])
     time_trial_feature_array = trial_time_feature_array.transpose(1, 0, 2)
 
-    fig0, axes0_2d = plt.subplots(3, 2, figsize=(6, 8), sharex=True, sharey=True)
-    fig1, axes1_2d = plt.subplots(3, 2, figsize=(6, 8), sharex=True, sharey=True)
-    fig2, axes2_2d = plt.subplots(3, 2, figsize=(6, 8), sharex=True, sharey=True)
+    fig0, axes0_2d = plt.subplots(3, 2, figsize=(6, 9), sharex=True, sharey=True)
+    fig1, axes1_2d = plt.subplots(3, 2, figsize=(6, 9), sharex=True, sharey=True)
+    fig2, axes2_2d = plt.subplots(3, 2, figsize=(6, 9), sharex=True, sharey=True)
     fig3, axes3_2d = plt.subplots(1, 2, figsize=(6, 3), sharex=True, sharey=True)
-
-
 
     flat_axes0 = np.array(axes0_2d).reshape(6)
     flat_axes1 = np.array(axes1_2d).reshape(6)
@@ -212,7 +210,7 @@ def scatter_and_ellipse_each_time(data_list2):
 
     axes = list(flat_axes0) + list(flat_axes1) + list(flat_axes2) + list(flat_axes3)
 
-    # repo_env.make_dirs("out", "scatter_ellipse", exist_ok=True)
+    repo_env.make_dirs("out", "scatter_ellipse", exist_ok=True)
     for i, (trial_feature_array, color, ax) in enumerate(zip(time_trial_feature_array, green_to_red_20, axes)):
         # index_column = math.floor(i / 2.)
         # if index_column <= 4:
@@ -295,7 +293,7 @@ def scatter_animation(data_list2):
     plt.show()
 
 
-def contours(data_list2):
+def ellipse_all_time(data_list2):
     xlims, ylims = get_lims(data_list2)
 
     x_name = data_list2[0].columns[0]
@@ -353,7 +351,10 @@ def contours(data_list2):
         ax.set_ylabel(y_name)
 
     ax.autoscale()
-    fig.savefig(repo_env.path("out", "contour_{}_{}.png".format(x_name, y_name, )))
+    ax.set_xlim(xlims)
+    ax.set_ylim(ylims)
+
+    fig.savefig(repo_env.path("out", "ellipse_{}_{}.pdf".format(x_name, y_name, )))
 
 
 # scatter aniumationとかぶってる

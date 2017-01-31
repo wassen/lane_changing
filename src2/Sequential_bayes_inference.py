@@ -24,7 +24,6 @@ class Bivariate_Gaussian:
 
 
 class GaussBayesEstimation:
-
     def normalize(self):
         if not all([prob == 0 for prob in self.dist]):
             self.dist /= sum(self.dist)
@@ -34,6 +33,7 @@ class GaussBayesEstimation:
         def get_prior():
             # return np.arange(1.,21)[::-1]
             return np.ones(size) / size
+
         self.dist = get_prior()
         self.normalize()
         self.time = 0
@@ -46,8 +46,6 @@ class GaussBayesEstimation:
             return np.dot(weight, time_array)
         elif method == "MAP":
             return self.size - np.argmax(self.dist)
-
-
 
     # def update2(self, likelihoods):
     #     likelihoods = np.array(likelihoods)
@@ -88,17 +86,17 @@ if __name__ == '__main__':
 
         train, test = delc.train_test_for_bayes()
 
-        print(len(train))
-        print(len(test))
         # これひとつのめソッドに
         data_3d = DataEachLC.dfinlist_to_nparray3d(train)
         train_2d = DataEachLC.nparray3d_to_2d(data_3d)
 
-        # trainの全サンプルでPCA
+        import sklearn
         from sklearn.decomposition import PCA
-
+        scaler = sklearn.preprocessing.MinMaxScaler()
+        normalized_train_2d = scaler.fit_transform(train_2d)
+        # trainの全サンプルでPCA
         pca = PCA(n_components=2)
-        pca.fit(train_2d)
+        pca.fit(normalized_train_2d)
         # data_pca = pca.transform(all_time_and_lc)
 
         train_each_time = data_3d.transpose(1, 0, 2)
@@ -106,36 +104,84 @@ if __name__ == '__main__':
         # trainの各時刻にPCA適用、mean covを出す
         import numpy as np
 
-        train_trans_list = [pca.transform(train) for train in train_each_time]
+        train_trans_list = [pca.transform(scaler.transform(train)) for train in train_each_time]
         mean_list = [np.mean(train_trans, axis=0) for train_trans in train_trans_list]
         cov_list = [np.cov(train_trans, rowvar=False, bias=0) for train_trans in train_trans_list]
 
+        def process_for_figure():
+            print(np.array(train_trans_list)[[0, 1, 10, 18, 19], 0, :])
+            print(np.array(train_trans_list)[[0, 1, 10, 18, 19], 1, :])
+            print(np.array(train_trans_list)[[0, 1, 10, 18, 19], 128, :])
+            m = np.array(mean_list)
+            c = np.array(cov_list)
+            print(m[[0, 1, 10, 18, 19], :])
+            print(c[[0, 1, 10, 18, 19], :])
+
+            exit()
+
+        # process_for_figure()
+
         gauss_list = [Bivariate_Gaussian(mean, cov) for mean, cov in zip(mean_list, cov_list)]
-        errors_list = []
-        exps_list= []
+        # errors_list = []
+        exps_weight_list = []
+        exps_MAP_list = []
+        exps_mle_list = []
         for i, tes in enumerate(test):
-            print("case{}".format(i))
-            tes_trans = pca.transform(tes)
+            # print("case{}".format(i))
+            tes_trans = pca.transform(scaler.transform(tes))
             size = 20
             be = GaussBayesEstimation(size, )
-            errors = []
-            exps=[]
+            # errors = []
+            exps_weight = []
+            exps_MAP = []
+            exps_mle = []
             for j, tes_tra in enumerate(tes_trans):
+                # print(tes_tra)
                 log_likelihoods = [gauss.log_likelihood(tes_tra) for gauss in gauss_list]
+                likelihood = np.exp(log_likelihoods)  # 一応
+                # print(likelihood)図用#
                 be.update(log_likelihoods)
+                # print(be.dist) #図用
                 act = size - j
-                exp = be.most_likely_time("weight")
-                print("act:{0}, pred:{1}".format(act, exp))
-                errors.append((act - exp)**2)
-                exps.append(exp)
-            errors_list.append(errors)
-            exps_list.append(exps)
-        frame_each_time = 2
-        return [round(np.average(exps) / frame_each_time, 2) for exps in np.array(exps_list).T]
-    result = [one_try() for _ in range(100)]
-    print(np.average(result, axis=0))
 
-# 紙に手続き書いてから実装しよう。5つ分割して、残り1つで結果出してみる。plot_interfaceのかぶりも消去
+                exp_weight = be.most_likely_time("weight")
+                exp_MAP = be.most_likely_time("MAP")
+                exp_mle = size - np.argmax(likelihood)
+
+                # print("act:{0}, pred:{1}".format(act, exp))
+                # exp = be.most_likely_time("weight")
+                # print("act:{0}, pred:{1}".format(act, exp))
+
+                # errors.append((act - exp) ** 2)
+
+                exps_weight.append(exp_weight)
+                exps_MAP.append(exp_MAP)
+                exps_mle.append(exp_mle)
+
+            # errors_list.append(errors)
+            exps_weight_list.append(exps_weight)
+            exps_MAP_list.append(exps_MAP)
+            exps_mle_list.append(exps_mle)
+        frame_each_time = 2
+        # HDDアクセスで結果を残して，他で処理って感じにしたい．30回繰り返すやつとグラフを書くやつをどうかき分けるか
+        # np.save()
+        return [round(np.average(exps_weight) / frame_each_time, 2) for exps_weight in np.array(exps_weight_list).T], \
+               [round(np.average(exps_MAP) / frame_each_time, 2) for exps_MAP in np.array(exps_MAP_list).T], \
+               [round(np.average(exps_mle) / frame_each_time, 2) for exps_mle in np.array(exps_mle_list).T]
+
+    import progressbar
+
+    bar = progressbar.ProgressBar()
+    iter_number = 1
+    result = [one_try() for _ in bar(range(iter_number))]
+    # print(np.average(result, axis=0))
+    print(result[0][0])
+
+
+
+
+
+# 紙に手続き書いてから実装しよう。←これ子供に伝えたいことのあれに．5つ分割して、残り1つで結果出してみる。plot_interfaceのかぶりも消去
 
 # 池田先生
 
@@ -152,14 +198,14 @@ if __name__ == '__main__':
 #   2.31533333  2.019       1.73466667  1.473       1.219       0.98433333
 #   0.74        0.5       ]
 # weight
-#[ 5.58566667  5.45933333  5.24366667  4.98333333  4.69933333  4.40666667
-  # 4.11366667  3.81633333  3.515       3.214       2.91666667  2.623
-  # 2.33333333  2.051       1.776       1.50966667  1.24966667  0.99666667
-  # 0.74633333  0.5       ]
-  #   [5.55966667  5.422       5.2         4.93966667  4.65733333  4.36833333
-  #    4.07633333  3.78466667  3.492       3.19833333  2.90766667  2.62033333
-  #    2.334       2.055       1.78033333  1.51333333  1.25266667  0.99866667
-  #    0.748       0.5]
+# [ 5.58566667  5.45933333  5.24366667  4.98333333  4.69933333  4.40666667
+# 4.11366667  3.81633333  3.515       3.214       2.91666667  2.623
+# 2.33333333  2.051       1.776       1.50966667  1.24966667  0.99666667
+# 0.74633333  0.5       ]
+#   [5.55966667  5.422       5.2         4.93966667  4.65733333  4.36833333
+#    4.07633333  3.78466667  3.492       3.19833333  2.90766667  2.62033333
+#    2.334       2.055       1.78033333  1.51333333  1.25266667  0.99866667
+#    0.748       0.5]
 
 
 

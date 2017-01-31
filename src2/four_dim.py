@@ -34,7 +34,7 @@ if __name__ == '__main__':
 
     # dataframeのリストをそのままnparrayに突っ込んでも3次元arrayにならない。（おそらくpandas3大クソ仕様のうちの一つの__iter__()をcolumnsにしているせい）
     data_3d_array = np.array([data.as_matrix() for data in features_df_list])
-    data_array_each_time = data_3d_array.transpose(1, 0, 2)
+    data_array_each_time = data_3d_array#.transpose(1, 0, 2)
     # ここメソッド化したいが．．．ddToolsか？
 
     shape = data_array_each_time.shape
@@ -43,7 +43,7 @@ if __name__ == '__main__':
     import sklearn
     scaler = sklearn.preprocessing.MinMaxScaler()
     normalized_data = scaler.fit_transform(data)
-    print(normalized_data.shape)
+
     # 主成分分析による次元削減
     pca = PCA(n_components=4)
     pca.fit(normalized_data)
@@ -51,7 +51,3 @@ if __name__ == '__main__':
 
     print(pca.components_)
     print("1:{:.2%}, 2:{:.2%}, 3:{:.2%}, 4:{:.2%} ".format(*pca.explained_variance_ratio_))
-
-
-    # 主成分分析後のサイズ
-    print(pca_data.shape)
