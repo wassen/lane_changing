@@ -20,7 +20,7 @@ if __name__ == '__main__':
         # plot_2d.contours(features_df_list)
         plot_2d.scatter_animation(features_df_list)
 
-    plot_features()
+    # plot_features()
 
     def plot_diffs():
         diffs_df_list = delc.extract_columns(delc.diffs)
@@ -61,3 +61,9 @@ if __name__ == '__main__':
         plot_2d.contours('front_center_distance', 'front_center_relvy')
         plot_2d.scatter_all_behavior('front_center_distance', 'front_center_relvy')
         plot_2d.scatter_each_time('front_center_distance', 'front_center_relvy')
+
+    def plot_scatter_and_contour():
+        features_df_list = delc.extract_columns(features)
+        plot_2d.scatter_and_ellipse_each_time(features_df_list)
+
+    plot_scatter_and_contour()

@@ -26,7 +26,7 @@ columns = ('label',
 
 class DataEachLC:
     @classmethod
-    def load_each_lc(cls, deci_second):
+    def __load_each_lc(cls, deci_second):
         def load_right_divide_9000():
 
             def load(behavior, lc_series_num, type):
@@ -197,7 +197,7 @@ class DataEachLC:
             self.data = pd.read_pickle(pickle_path)
         else:
             # load->5刻みに、特定の特徴を抜き出す->全フレーム揃ってるやつだけ->0.5sec前の値と、それの差分の列を追加
-            self.data = self.__class__.load_each_lc(deci_second)
+            self.data = self.__class__.__load_each_lc(deci_second)
             self.data = (data[::frame_rate][features] for data in self.data)
             self.data = (
                 one_lc for one_lc in self.data

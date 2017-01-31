@@ -11,8 +11,10 @@ import progressbar
 import seaborn as sns
 import numpy as np
 import ddTools as dT
+from math import sqrt
 import repo_env
 from matplotlib.patches import Ellipse
+import math
 
 # label間違ってた問題、影響ある？ seabornのpairplotはlabelで自動色分けできたけど、それ以外は影響ないはず。seabornも結局エラー祭りだったし。
 
@@ -140,6 +142,12 @@ def scatter_all_behavior(data_list2):
     plt.close()
 
 
+def get_filtered_data_list(data_list, x_sample_name, y_sample_name):
+    return filter(
+        lambda plot_data: plot_data[[x_sample_name, y_sample_name]].dropna().shape[0] == 100,
+        data_list)
+
+
 def scatter_each_time(x_sample_name, y_sample_name):
     xlims, ylims = get_lims(x_sample_name, y_sample_name)
     fig = plt.figure()
@@ -164,6 +172,96 @@ def scatter_each_time(x_sample_name, y_sample_name):
         ax.set_ylabel(y_sample_name)
         fig.savefig("{}.png".format(i))
         fig.clf()
+
+
+def __ellipse_with_mean_and_covariance(ax, mean, cov, color):
+    cov = ExtMatrix(cov)
+    eig_val, eig_vec = cov.eig
+
+    # array->mat->arrayでややこしいんやけど
+    def angle(v):
+        v = np.array(v)
+        first_vec = v[:, 0]
+        return np.rad2deg(np.arctan(first_vec[1] / first_vec[0]))
+
+    return Ellipse(xy=mean, width=sqrt(eig_val[0]) * 2, height=sqrt(eig_val[1]) * 2, angle=angle(eig_vec),
+                   alpha=1, edgecolor=color, fill=False, linewidth=2)
+
+
+def scatter_and_ellipse_each_time(data_list2):
+    xlims, ylims = get_lims(data_list2)
+
+    x_name = data_list2[0].columns[0]
+    y_name = data_list2[0].columns[1]
+
+    # numpyをextendしてcolumnつけたほうがマシじゃないか？pandas脱却したい．
+    trial_time_feature_array = np.array([data.as_matrix() for data in data_list2])
+    time_trial_feature_array = trial_time_feature_array.transpose(1, 0, 2)
+
+    fig0, axes0_2d = plt.subplots(3, 2, figsize=(6, 8), sharex=True, sharey=True)
+    fig1, axes1_2d = plt.subplots(3, 2, figsize=(6, 8), sharex=True, sharey=True)
+    fig2, axes2_2d = plt.subplots(3, 2, figsize=(6, 8), sharex=True, sharey=True)
+    fig3, axes3_2d = plt.subplots(1, 2, figsize=(6, 3), sharex=True, sharey=True)
+
+
+
+    flat_axes0 = np.array(axes0_2d).reshape(6)
+    flat_axes1 = np.array(axes1_2d).reshape(6)
+    flat_axes2 = np.array(axes2_2d).reshape(6)
+    flat_axes3 = np.array(axes3_2d).reshape(2)
+
+    axes = list(flat_axes0) + list(flat_axes1) + list(flat_axes2) + list(flat_axes3)
+
+    # repo_env.make_dirs("out", "scatter_ellipse", exist_ok=True)
+    for i, (trial_feature_array, color, ax) in enumerate(zip(time_trial_feature_array, green_to_red_20, axes)):
+        # index_column = math.floor(i / 2.)
+        # if index_column <= 4:
+        #     axes_for_plot = axes0
+        # else:
+        #     axes_for_plot = axes1
+        #     index_column -= 5
+        # index_row = i % 2
+        # print(axes0.shape)
+        #
+        # ax = axes_for_plot[index_column][index_row]
+
+        # fig = plt.figure()
+        # ax = fig.add_subplot(1, 1, 1)
+
+        ax.scatter(*trial_feature_array.T, color=color, s=2)
+
+        mean = np.mean(trial_feature_array, axis=0)
+        cov = np.cov(trial_feature_array, rowvar=False)
+        ellipse = __ellipse_with_mean_and_covariance(ax, mean, cov, color)
+
+        ax.add_patch(ellipse)
+
+        # ax.autoscale()
+        ax.set_xlim(xlims)
+        ax.set_ylim(ylims)
+        # ax.xaxis.set_tick_params(labelsize=13)
+        # ax.yaxis.set_tick_params(labelsize=13)
+        # ax.set_title(r"$\tau={}$".format((20 - i) / 2.))#, fontsize=18)
+        ax.set_title(r"{} sec".format(- (20 - i) / 2.))#, fontsize=18)
+        # コピペ
+        # xlim = ax.get_xlim()
+        # ylim = ax.get_ylim()
+        # aspect = (xlim[1] - xlim[0]) / (ylim[1] - ylim[0])
+        # ax.set_aspect(aspect)
+
+        # fig.savefig(repo_env.path("out", "scatter_ellipse", "{}_{}{}.png".format(x_name, y_name, i)))
+        # fig.clf()
+
+    figs = (fig0, fig1, fig2, fig3)
+
+    for i, fig in enumerate(figs):
+        fig.text(0.5, 0.025, x_name, ha='center', va='center')  # , fontsize=18)
+        fig.text(0.04, 0.5, y_name, ha='center', va='center', rotation='vertical')  # , fontsize=18)
+        # fig.subplots_adjust(left=0.1, top=0.99, bottom=0.06)
+        if i == 3:
+            fig.subplots_adjust(bottom=0.2)
+        fig.savefig(repo_env.path("out", "scatter_ellipse_{}_{}{}.pdf".format(x_name, y_name, i)))
+
 
 
 def scatter_animation(data_list2):
