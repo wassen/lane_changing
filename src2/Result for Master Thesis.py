@@ -14,8 +14,8 @@ if __name__ == '__main__':
     # 2.2
     # plot_2d.scatter_and_ellipse_each_time(features_df_list)
     # 2.3
-    # plot_2d.ellipse_all_time(features_df_list)
-
+    plot_2d.ellipse_all_time(features_df_list)
+    exit()
     with_prevs = features + delc.prevs
     features_df_list_with_prevs = delc.extract_columns(with_prevs)
     # データ変形 dataframeのリストをそのままnparrayに突っ込んでも3次元arrayにならない。（おそらくpandas3大クソ仕様のうちの一つの__iter__()をcolumnsにしているせい）

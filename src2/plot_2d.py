@@ -351,10 +351,10 @@ def ellipse_all_time(data_list2):
         ax.set_ylabel(y_name)
 
     ax.autoscale()
-    ax.set_xlim(xlims)
-    ax.set_ylim(ylims)
-
-    fig.savefig(repo_env.path("out", "ellipse_{}_{}.pdf".format(x_name, y_name, )))
+    # rangeがanimationとちがうかった
+    ax.set_xlim([0, 120])
+    ax.set_ylim([-8,6])
+    fig.savefig(repo_env.path("out", "ellipse_{}_{}.png".format(x_name, y_name, )))
 
 
 # scatter aniumationとかぶってる

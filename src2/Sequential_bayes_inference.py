@@ -193,16 +193,16 @@ if __name__ == '__main__':
 
         s = list(sorted(set([0, 1, 2]) - set([i])))
 
-        ax0 = axes1_2d[s[0]]
-        ax1 = axes1_2d[s[1]]
+        #ax0 = axes1_2d[s[0]]
+        #ax1 = axes1_2d[s[1]]
         error_all = list(
             chain.from_iterable(
                 [- np.array(result_seq) - np.arange(-20, 0) for result_seq in result_seq_list]
             )
         )
 
-        hist = ax0.hist(error_all, color=color, alpha=0.5, bins=range(-20, 20), label=name)
-        ax1.hist(error_all, color=color, alpha=0.5, bins=range(-20, 20), label=name)
+        hist = axes1_2d[i].hist(error_all, color=color, alpha=0.5, bins=range(-20, 20), label=name)
+        #ax1.hist(error_all, color=color, alpha=0.5, bins=range(-20, 20), label=name)
         hists.append(hist)
 
     import repo_env
@@ -213,8 +213,8 @@ if __name__ == '__main__':
     fig0.text(0.5, 0.025, r"Time_frame$\tau$", ha='center', va='center')  # , fontsize=18)
     fig0.text(0.04, 0.5, r"Predicted_time_frame$\hat{\tau}$", ha='center', va='center',
               rotation='vertical')  # , fontsize=18)  # 日本語？？？フォント設定
-    fig0.savefig(repo_env.path("out", "result_line_error.pdf"))
-    fig1.savefig(repo_env.path("out", "result_hist.pdf"))
+    fig0.savefig(repo_env.path("out", "result_line_error.png"))
+    fig1.savefig(repo_env.path("out", "result_hist.png"))
 
 
     # 紙に手続き書いてから実装しよう。←これ子供に伝えたいことのあれに．5つ分割して、残り1つで結果出してみる。plot_interfaceのかぶりも消去
